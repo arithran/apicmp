@@ -13,11 +13,23 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 
 	"github.com/nsf/jsondiff"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 )
+
+const curlTemplate = `
+Before:
+curl --location --request {{ .Before.Method }} '{{ .Before.Path }}' \{{range $k, $v := .Before.Headers}}
+--header '{{$k}}: {{$v}}'{{end}}
+
+After:
+curl --location --request {{ .After.Method }} '{{ .After.Path }}' \{{range $k, $v := .After.Headers}}
+--header '{{$k}}: {{$v}}'{{end}}
+
+`
 
 const (
 	headerAPIKey  = "X-Api-Key"
@@ -45,6 +57,8 @@ type Summary struct {
 
 // Cmp will compare the before and after
 func Cmp(ctx context.Context, c Config) error {
+	t := template.Must(template.New("curl").Parse(curlTemplate))
+
 	// set loglevel
 	l, err := log.ParseLevel(c.LogLevel)
 	if err != nil {
@@ -53,7 +67,7 @@ func Cmp(ctx context.Context, c Config) error {
 	log.SetLevel(l)
 
 	// generate events from csv
-	eChan, err := ReadEvents(c.FixtureFilePath, parseRows(c.Rows)...)
+	eChan, err := ReadEvents(c, parseRows(c.Rows)...)
 	if err != nil {
 		return err
 	}
@@ -81,7 +95,9 @@ func Cmp(ctx context.Context, c Config) error {
 	for d := range diffs {
 		sum.Count++
 		if d.beforeCode != d.afterCode {
-			log.Errorf("StatusCodes didn't match\n Before:%s\n After:%s\n DMA: %s\n APIKey: %s\n Path: %s\n\n\n", d.beforeCode, d.afterCode, d.e.DMA, d.e.APIKey, d.e.Path)
+			_ = t.Execute(os.Stdout, d.e)
+			log.Error("StatusCodes didn't match")
+			fmt.Printf("\n\n")
 			continue
 		}
 
@@ -100,8 +116,7 @@ func Cmp(ctx context.Context, c Config) error {
 
 		if len(delta) > 0 {
 			sort.Sort(sortDelta(delta))
-
-			fmt.Printf("Request:\n DMA: %s\n APIKey: %s\n Path: %s\n", d.e.DMA, d.e.APIKey, d.e.Path)
+			_ = t.Execute(os.Stdout, d.e)
 			table := tablewriter.NewWriter(os.Stdout)
 			table.SetAutoFormatHeaders(false)
 			table.SetHeader([]string{"Field", "Diff"})
@@ -137,9 +152,17 @@ type Event struct {
 	DMA    string
 	APIKey string
 	Path   string
+	Before input
+	After  input
 }
 
-func ReadEvents(csvFile string, selectedRows ...int) (<-chan Event, error) {
+type input struct {
+	Method  string
+	Path    string
+	Headers map[string]string
+}
+
+func ReadEvents(c Config, selectedRows ...int) (<-chan Event, error) {
 	// selectedRows is useful when re-running failed tests
 	var mSelectedRows map[int]struct{}
 	if len(selectedRows) > 0 {
@@ -149,7 +172,7 @@ func ReadEvents(csvFile string, selectedRows ...int) (<-chan Event, error) {
 		}
 	}
 
-	f, err := os.Open(csvFile)
+	f, err := os.Open(c.FixtureFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -179,11 +202,33 @@ func ReadEvents(csvFile string, selectedRows ...int) (<-chan Event, error) {
 				}
 			}
 
+			dma := row[0]
+			apikey := row[1]
+			path := row[2]
 			out <- Event{
 				Row:    cursor,
 				DMA:    row[0],
 				APIKey: row[1],
 				Path:   row[2],
+				Before: input{
+					Method: http.MethodGet,
+					Path:   c.BeforeBasePath + path,
+					Headers: map[string]string{
+						headerAPIKey:  apikey,
+						headerUserDma: dma,
+						headerToken:   c.AccessToken,
+					},
+				},
+				After: input{
+					Method: http.MethodGet,
+					Path:   c.AfterBasePath + path,
+					Headers: map[string]string{
+						headerAPIKey:                      apikey,
+						headerUserDma:                     dma,
+						headerToken:                       c.AccessToken,
+						"X-Feature-V1getvideobyidenabled": "true",
+					},
+				},
 			}
 		}
 
@@ -212,24 +257,23 @@ func Test(ctx context.Context, c Config, client httpClient, in <-chan Event) <-c
 	go func() {
 		for e := range in {
 			// create requests
-			before, err := http.NewRequestWithContext(ctx, "GET", c.BeforeBasePath+e.Path, nil)
+			before, err := http.NewRequestWithContext(ctx, e.Before.Method, e.Before.Path, nil)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
-			before.Header.Add(headerAPIKey, e.APIKey)
-			before.Header.Add(headerUserDma, e.DMA)
-			before.Header.Add(headerToken, c.AccessToken)
+			for k, v := range e.Before.Headers {
+				before.Header.Add(k, v)
+			}
 
-			after, err := http.NewRequestWithContext(ctx, "GET", c.AfterBasePath+e.Path, nil)
+			after, err := http.NewRequestWithContext(ctx, e.After.Method, e.After.Path, nil)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
-			after.Header.Add(headerAPIKey, e.APIKey)
-			after.Header.Add(headerUserDma, e.DMA)
-			after.Header.Add(headerToken, c.AccessToken)
-			after.Header.Add("X-Feature-V1getvideobyidenabled", "true")
+			for k, v := range e.After.Headers {
+				after.Header.Add(k, v)
+			}
 
 			// make requests
 			bResp, err := client.Do(before)
@@ -297,12 +341,9 @@ func merge(cs ...<-chan Diff) <-chan Diff {
 }
 
 func trace(req *http.Request, resp *http.Response) {
-	// if resp.StatusCode >= 300 {
 	reqStr, _ := httputil.DumpRequestOut(req, true)
 	log.Tracef("---TRACE REQUEST---\n%s\n--- END ---\n\n", reqStr)
 
 	respStr, _ := httputil.DumpResponse(resp, true)
 	log.Tracef("---TRACE RESPONSE---\n%s\n--- END ---\n\n", respStr)
-
-	// }
 }
