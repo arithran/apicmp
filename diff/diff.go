@@ -21,6 +21,8 @@ import (
 )
 
 const curlTemplate = `
+Row: {{.Row}}
+
 Before:
 curl --location --request {{ .Before.Method }} '{{ .Before.Path }}' \{{range $k, $v := .Before.Headers}}
 --header '{{$k}}: {{$v}}'{{end}}
@@ -51,7 +53,7 @@ type Config struct {
 type Summary struct {
 	Count      int
 	Passed     int
-	FailedRows []string
+	FailedRows []int
 	Issues     map[string]int
 }
 
@@ -98,6 +100,7 @@ func Cmp(ctx context.Context, c Config) error {
 			_ = t.Execute(os.Stdout, d.e)
 			log.Error("StatusCodes didn't match")
 			fmt.Printf("\n\n")
+			sum.FailedRows = append(sum.FailedRows, d.e.Row)
 			continue
 		}
 
@@ -125,7 +128,7 @@ func Cmp(ctx context.Context, c Config) error {
 			table.Render()
 			fmt.Printf("\n\n")
 
-			sum.FailedRows = append(sum.FailedRows, strconv.Itoa(d.e.Row))
+			sum.FailedRows = append(sum.FailedRows, d.e.Row)
 		} else {
 			sum.Passed++
 		}
@@ -136,7 +139,13 @@ func Cmp(ctx context.Context, c Config) error {
 		sumTable = append(sumTable, []string{k, strconv.Itoa(v)})
 	}
 	sort.Sort(sortDelta(sumTable))
-	fmt.Printf("Summary:\n Total Tests:%d\n Passed:%d\n Failed:%d\n Failed Rows:%s\n", sum.Count, sum.Passed, sum.Count-sum.Passed, strings.Join(sum.FailedRows, ","))
+	sort.Ints(sum.FailedRows)
+	failedRows := make([]string, len(sum.FailedRows))
+	for k, v := range sum.FailedRows {
+		failedRows[k] = strconv.Itoa(v)
+	}
+
+	fmt.Printf("Summary:\n Total Tests:%d\n Passed:%d\n Failed:%d\n Failed Rows:%s\n", sum.Count, sum.Passed, sum.Count-sum.Passed, strings.Join(failedRows, ","))
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAutoFormatHeaders(false)
 	table.SetHeader([]string{"Field", "Issues"})
