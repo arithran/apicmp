@@ -51,15 +51,13 @@ func main() {
 						Usage:   "Eg: @id,createdDate,ContentSKUs",
 					},
 					&cli.StringFlag{
-						Name:        "rows",
-						Aliases:     []string{"r"},
-						Usage:       "Eg: 1,7,12",
-						DefaultText: "return failed or specific tests",
+						Name:    "rows",
+						Aliases: []string{"r"},
+						Usage:   "Eg: 1,7,12 (rerun failed or specific tests)",
 					},
 					&cli.StringFlag{
-						Name:        "retry",
-						Usage:       "Eg: 424,500",
-						DefaultText: "retry specific status codes once",
+						Name:  "retry",
+						Usage: "Eg: 424,500 (retry specific status codes once)",
 					},
 					&cli.StringFlag{
 						Name:  "loglevel",
