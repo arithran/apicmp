@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	headerAPIKey  = "X-Api-Key"
-	headerUserDma = "X-User-Dma"
-	headerToken   = "X-Access-Token"
+	headerAPIKey       = "X-Api-Key"
+	headerUserDma      = "X-User-Dma"
+	headerToken        = "X-Access-Token"
+	headerCacheControl = "Cache-Control"
 )
 
 type Summary struct {
@@ -192,9 +193,10 @@ func generateTests(c Config, rows map[int]struct{}) (<-chan test, error) {
 					Method: http.MethodGet,
 					Path:   c.BeforeBasePath + path,
 					Headers: map[string]string{
-						headerAPIKey:  apikey,
-						headerUserDma: dma,
-						headerToken:   c.AccessToken,
+						headerAPIKey:       apikey,
+						headerUserDma:      dma,
+						headerToken:        c.AccessToken,
+						headerCacheControl: "no-cache",
 					},
 				},
 				After: args{
@@ -204,6 +206,7 @@ func generateTests(c Config, rows map[int]struct{}) (<-chan test, error) {
 						headerAPIKey:                      apikey,
 						headerUserDma:                     dma,
 						headerToken:                       c.AccessToken,
+						headerCacheControl:                "no-cache",
 						"X-Feature-V1getvideobyidenabled": "true",
 					},
 				},
