@@ -57,6 +57,11 @@ func main() {
 						DefaultText: "return failed or specific tests",
 					},
 					&cli.StringFlag{
+						Name:        "retry",
+						Usage:       "Eg: 424,500",
+						DefaultText: "retry specific status codes once",
+					},
+					&cli.StringFlag{
 						Name:  "loglevel",
 						Value: "debug",
 						Usage: "Eg: debug",
@@ -86,7 +91,8 @@ func main() {
 						FixtureFilePath: c.String("fixtureFile"),
 						AccessToken:     c.String("token"),
 						IgnoreFields:    c.String("ignoreFields"),
-						Rows:            c.String("rows"),
+						Rows:            diff.Atoim(c.String("rows")),
+						Retry:           diff.Atoim(c.String("retry")),
 						LogLevel:        c.String("loglevel"),
 						Threads:         c.Int("threads"),
 					})

@@ -7,49 +7,22 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"text/template"
 
 	"github.com/nsf/jsondiff"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 )
 
-const curlTemplate = `
-Testing Row: {{.Row}}
-===============
-Before:
-curl --location --request {{ .Before.Method }} '{{ .Before.Path }}' \{{range $k, $v := .Before.Headers}}
---header '{{$k}}: {{$v}}'{{end}}
-
-After:
-curl --location --request {{ .After.Method }} '{{ .After.Path }}' \{{range $k, $v := .After.Headers}}
---header '{{$k}}: {{$v}}'{{end}}
-
-Result:
-`
-
 const (
 	headerAPIKey  = "X-Api-Key"
 	headerUserDma = "X-User-Dma"
 	headerToken   = "X-Access-Token"
 )
-
-type Config struct {
-	BeforeBasePath  string
-	AfterBasePath   string
-	FixtureFilePath string
-	AccessToken     string
-	IgnoreFields    string
-	Rows            string
-	LogLevel        string
-	Threads         int
-}
 
 type Summary struct {
 	Count      int
@@ -58,48 +31,50 @@ type Summary struct {
 	Issues     map[string]int
 }
 
+type Config struct {
+	BeforeBasePath  string
+	AfterBasePath   string
+	FixtureFilePath string
+	AccessToken     string
+	IgnoreFields    string
+	Rows            map[int]struct{}
+	Retry           map[int]struct{}
+	LogLevel        string
+	Threads         int
+}
+
 // Cmp will compare the before and after
 func Cmp(ctx context.Context, c Config) error {
-	t := template.Must(template.New("curl").Parse(curlTemplate))
-
-	// set loglevel
-	l, err := log.ParseLevel(c.LogLevel)
-	if err != nil {
+	if err := setLoglevel(c.LogLevel); err != nil {
 		return err
 	}
-	log.SetLevel(l)
 
-	// generate events from csv
-	eChan, err := ReadEvents(c, parseRows(c.Rows)...)
+	// gen tests
+	tChan, err := generateTests(c, c.Rows)
 	if err != nil {
 		return err
 	}
 
-	// kickoff workers
-	cs := make([]<-chan Diff, c.Threads)
+	// init assertion workers
+	client := newRetriableHTTPClient(&http.Client{}, c.Retry)
+	cs := make([]<-chan result, c.Threads)
 	for i := 0; i < c.Threads; i++ {
-		cs[i] = Test(ctx, c, &http.Client{}, eChan)
+		cs[i] = assert(ctx, client, tChan)
 	}
 
-	// ignore certain fields in diffs
-	ignoreFields := strings.Split(c.IgnoreFields, ",")
-	ignore := map[string]struct{}{}
-	for _, v := range ignoreFields {
-		ignore[v] = struct{}{}
-	}
-
-	// compare diffs
+	// compute results
 	sum := Summary{
 		Issues: map[string]int{},
 	}
+	ignore := Atoam(c.IgnoreFields)
 	opts := jsondiff.DefaultConsoleOptions()
 	opts.PrintTypes = false
 	diffs := merge(cs...)
 	for d := range diffs {
 		sum.Count++
 		if d.beforeCode != d.afterCode {
-			_ = t.Execute(os.Stdout, d.e)
-			log.Error("StatusCodes didn't match")
+			_ = curlTpl.Execute(os.Stdout, d.e)
+			log.Errorf("StatusCodes didn't match,\n before: %s\n after : %s", d.beforeCode, d.afterCode)
 			fmt.Printf("\n\n")
 			sum.FailedRows = append(sum.FailedRows, d.e.Row)
 			continue
@@ -120,7 +95,7 @@ func Cmp(ctx context.Context, c Config) error {
 
 		if len(delta) > 0 {
 			sort.Sort(sortDelta(delta))
-			_ = t.Execute(os.Stdout, d.e)
+			_ = curlTpl.Execute(os.Stdout, d.e)
 			table := tablewriter.NewWriter(os.Stdout)
 			table.SetAutoFormatHeaders(false)
 			table.SetHeader([]string{"Field", "Diff"})
@@ -157,47 +132,38 @@ func Cmp(ctx context.Context, c Config) error {
 	return nil
 }
 
-type Event struct {
-	Row    int
-	DMA    string
-	APIKey string
-	Path   string
-	Before input
-	After  input
-}
-
-type input struct {
-	Method  string
-	Path    string
-	Headers map[string]string
-}
-
-func ReadEvents(c Config, selectedRows ...int) (<-chan Event, error) {
-	// selectedRows is useful when re-running failed tests
-	var mSelectedRows map[int]struct{}
-	if len(selectedRows) > 0 {
-		mSelectedRows = make(map[int]struct{})
-		for _, v := range selectedRows {
-			mSelectedRows[v] = struct{}{}
-		}
+type (
+	test struct {
+		Row    int
+		Before args
+		After  args
 	}
 
+	args struct {
+		Method  string
+		Path    string
+		Headers map[string]string
+	}
+)
+
+func generateTests(c Config, rows map[int]struct{}) (<-chan test, error) {
+	// read csv file
 	f, err := os.Open(c.FixtureFilePath)
 	if err != nil {
 		return nil, err
 	}
+	reader := csv.NewReader(f)
+	reader.LazyQuotes = true
+	_, _ = reader.Read() // discard header row
 
-	out := make(chan Event)
+	// generate tests
+	out := make(chan test)
 	go func() {
-		reader := csv.NewReader(f)
-		reader.LazyQuotes = true
-		_, _ = reader.Read() // discard header
-
 		cursor := 0
 		for {
 			cursor++
 
-			row, err := reader.Read()
+			fields, err := reader.Read()
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -206,21 +172,23 @@ func ReadEvents(c Config, selectedRows ...int) (<-chan Event, error) {
 				continue
 			}
 
-			if len(mSelectedRows) > 0 {
-				if _, ok := mSelectedRows[cursor]; !ok {
+			if len(fields) != 3 {
+				log.Errorf("invalid row at #%d", cursor)
+				continue
+			}
+
+			if len(rows) > 0 {
+				if _, ok := rows[cursor]; !ok {
 					continue
 				}
 			}
 
-			dma := row[0]
-			apikey := row[1]
-			path := row[2]
-			out <- Event{
-				Row:    cursor,
-				DMA:    row[0],
-				APIKey: row[1],
-				Path:   row[2],
-				Before: input{
+			dma := fields[0]
+			apikey := fields[1]
+			path := fields[2]
+			out <- test{
+				Row: cursor,
+				Before: args{
 					Method: http.MethodGet,
 					Path:   c.BeforeBasePath + path,
 					Headers: map[string]string{
@@ -229,7 +197,7 @@ func ReadEvents(c Config, selectedRows ...int) (<-chan Event, error) {
 						headerToken:   c.AccessToken,
 					},
 				},
-				After: input{
+				After: args{
 					Method: http.MethodGet,
 					Path:   c.AfterBasePath + path,
 					Headers: map[string]string{
@@ -249,20 +217,16 @@ func ReadEvents(c Config, selectedRows ...int) (<-chan Event, error) {
 	return out, nil
 }
 
-type httpClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-type Diff struct {
-	e          Event
+type result struct {
+	e          test
 	beforeCode string
 	beforeBody map[string]json.RawMessage
 	afterCode  string
 	afterBody  map[string]json.RawMessage
 }
 
-func Test(ctx context.Context, c Config, client httpClient, in <-chan Event) <-chan Diff {
-	out := make(chan Diff)
+func assert(ctx context.Context, client httpClient, in <-chan test) <-chan result {
+	out := make(chan result)
 
 	go func() {
 		for e := range in {
@@ -291,17 +255,17 @@ func Test(ctx context.Context, c Config, client httpClient, in <-chan Event) <-c
 				log.Error(err)
 				continue
 			}
-			trace(before, bResp)
+			httpTrace(before, bResp)
 
 			aResp, err := client.Do(after)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
-			trace(after, aResp)
+			httpTrace(after, aResp)
 
 			// unmashall & return
-			d := Diff{e: e}
+			d := result{e: e}
 
 			d.beforeCode = bResp.Status
 			err = json.NewDecoder(bResp.Body).Decode(&d.beforeBody)
@@ -328,11 +292,11 @@ func Test(ctx context.Context, c Config, client httpClient, in <-chan Event) <-c
 	return out
 }
 
-func merge(cs ...<-chan Diff) <-chan Diff {
+func merge(cs ...<-chan result) <-chan result {
 	var wg sync.WaitGroup
-	out := make(chan Diff)
+	out := make(chan result)
 
-	output := func(c <-chan Diff) {
+	output := func(c <-chan result) {
 		for n := range c {
 			out <- n
 		}
@@ -348,12 +312,4 @@ func merge(cs ...<-chan Diff) <-chan Diff {
 		close(out)
 	}()
 	return out
-}
-
-func trace(req *http.Request, resp *http.Response) {
-	reqStr, _ := httputil.DumpRequestOut(req, true)
-	log.Tracef("---TRACE REQUEST---\n%s\n--- END ---\n\n", reqStr)
-
-	respStr, _ := httputil.DumpResponse(resp, true)
-	log.Tracef("---TRACE RESPONSE---\n%s\n--- END ---\n\n", respStr)
 }

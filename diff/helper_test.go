@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_parseRows(t *testing.T) {
+func Test_Atois(t *testing.T) {
 	type args struct {
 		rows string
 	}
@@ -15,14 +15,14 @@ func Test_parseRows(t *testing.T) {
 		want []int
 	}{
 		{
-			name: "test1",
+			name: "test 1",
 			args: args{
 				rows: "1,5,7",
 			},
 			want: []int{1, 5, 7},
 		},
 		{
-			name: "test2",
+			name: "test 2",
 			args: args{
 				rows: "",
 			},
@@ -31,8 +31,45 @@ func Test_parseRows(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := parseRows(tt.args.rows); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseRows() = %v, want %v", got, tt.want)
+			if got := Atois(tt.args.rows); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Atois() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAtoim(t *testing.T) {
+	type args struct {
+		rows string
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[int]struct{}
+	}{
+		{
+			name: "test 1",
+			args: args{
+				rows: "1,5,7",
+			},
+			want: map[int]struct{}{
+				1: {},
+				5: {},
+				7: {},
+			},
+		},
+		{
+			name: "test 2",
+			args: args{
+				rows: "",
+			},
+			want: map[int]struct{}{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Atoim(tt.args.rows); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Atoim() = %v, want %v", got, tt.want)
 			}
 		})
 	}

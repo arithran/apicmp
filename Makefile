@@ -18,7 +18,7 @@ $(NAME)-%:
 
 dist: $(NAME)-darwin $(NAME)-linux $(NAME)-windows
 
-release: clean
+release:
 	semantic-release -noci -ghr -vf -slug arithran/apicmp
 	ghr $(cat .ghr) dist
 
@@ -28,4 +28,3 @@ release-dryrun:
 clean:
 	rm -f $(NAME)
 	rm -rf $(DIST_DIR)
-
