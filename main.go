@@ -88,7 +88,7 @@ func main() {
 						AfterBasePath:   c.String("afterPath"),
 						FixtureFilePath: c.String("fixtureFile"),
 						AccessToken:     c.String("token"),
-						IgnoreFields:    c.String("ignoreFields"),
+						IgnoreFields:    diff.Atoam(c.String("ignoreFields")),
 						Rows:            diff.Atoim(c.String("rows")),
 						Retry:           diff.Atoim(c.String("retry")),
 						LogLevel:        c.String("loglevel"),

@@ -2,18 +2,15 @@ package diff
 
 import (
 	"context"
-	"encoding/csv"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/nsf/jsondiff"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,10 +23,13 @@ const (
 )
 
 type Summary struct {
-	Count      int
-	Passed     int
-	FailedRows []int
-	Issues     map[string]int
+	Count         int
+	Passed        int
+	Failed        int
+	FailedRows    []int
+	FailedRowsStr string
+	Time          time.Duration
+	Issues        map[string]int
 }
 
 type Config struct {
@@ -37,7 +37,7 @@ type Config struct {
 	AfterBasePath   string
 	FixtureFilePath string
 	AccessToken     string
-	IgnoreFields    string
+	IgnoreFields    map[string]struct{}
 	Rows            map[int]struct{}
 	Retry           map[int]struct{}
 	LogLevel        string
@@ -46,12 +46,14 @@ type Config struct {
 
 // Cmp will compare the before and after
 func Cmp(ctx context.Context, c Config) error {
+	start := time.Now()
+
 	if err := setLoglevel(c.LogLevel); err != nil {
 		return err
 	}
 
 	// gen tests
-	tChan, err := generateTests(c, c.Rows)
+	tChan, err := generateTests(c)
 	if err != nil {
 		return err
 	}
@@ -60,52 +62,30 @@ func Cmp(ctx context.Context, c Config) error {
 	client := newRetriableHTTPClient(&http.Client{}, c.Retry)
 	cs := make([]<-chan result, c.Threads)
 	for i := 0; i < c.Threads; i++ {
-		cs[i] = assert(ctx, client, tChan)
+		cs[i] = assert(ctx, client, tChan, c.IgnoreFields)
 	}
 
 	// compute results
 	sum := Summary{
 		Issues: map[string]int{},
 	}
-	ignore := Atoam(c.IgnoreFields)
-	opts := jsondiff.DefaultConsoleOptions()
-	opts.PrintTypes = false
-	diffs := merge(cs...)
-	for d := range diffs {
+	results := merge(cs...)
+	for r := range results {
 		sum.Count++
-		if d.beforeCode != d.afterCode {
-			_ = curlTpl.Execute(os.Stdout, d.e)
-			log.Errorf("StatusCodes didn't match,\n before: %s\n after : %s", d.beforeCode, d.afterCode)
-			fmt.Printf("\n\n")
-			sum.FailedRows = append(sum.FailedRows, d.e.Row)
-			continue
-		}
 
-		delta := [][]string{}
-		for k, v := range d.beforeBody {
-			if _, ok := ignore[k]; ok {
-				continue
-			}
-
-			result, diff := jsondiff.Compare(v, d.afterBody[k], &opts)
-			if result != jsondiff.FullMatch {
-				delta = append(delta, []string{k, cleanDiff(diff)})
-				sum.Issues[k]++
-			}
-		}
-
-		if len(delta) > 0 {
-			sort.Sort(sortDelta(delta))
-			_ = curlTpl.Execute(os.Stdout, d.e)
+		if len(r.Diffs) > 0 {
+			_ = tpl.ExecuteTemplate(os.Stdout, "curl", r.e)
+			sum.FailedRows = append(sum.FailedRows, r.e.Row)
 			table := tablewriter.NewWriter(os.Stdout)
 			table.SetAutoFormatHeaders(false)
 			table.SetHeader([]string{"Field", "Diff"})
 			table.SetBorder(false)
-			table.AppendBulk(delta)
+			for _, v := range r.Diffs {
+				sum.Issues[v.Field]++
+				table.Append([]string{v.Field, v.Delta})
+			}
 			table.Render()
 			fmt.Printf("\n\n")
-
-			sum.FailedRows = append(sum.FailedRows, d.e.Row)
 		} else {
 			sum.Passed++
 		}
@@ -122,7 +102,11 @@ func Cmp(ctx context.Context, c Config) error {
 		failedRows[k] = strconv.Itoa(v)
 	}
 
-	fmt.Printf("Summary:\n Total Tests:%d\n Passed:%d\n Failed:%d\n Failed Rows:%s\n", sum.Count, sum.Passed, sum.Count-sum.Passed, strings.Join(failedRows, ","))
+	sum.Failed = sum.Count - sum.Passed
+	sum.FailedRowsStr = strings.Join(failedRows, ",")
+	sum.Time = time.Since(start)
+
+	_ = tpl.ExecuteTemplate(os.Stdout, "summary", sum)
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAutoFormatHeaders(false)
 	table.SetHeader([]string{"Field", "Issues"})
@@ -133,166 +117,23 @@ func Cmp(ctx context.Context, c Config) error {
 	return nil
 }
 
-type (
-	test struct {
-		Row    int
-		Before args
-		After  args
-	}
-
-	args struct {
-		Method  string
-		Path    string
-		Headers map[string]string
-	}
-)
-
-func generateTests(c Config, rows map[int]struct{}) (<-chan test, error) {
-	// read csv file
-	f, err := os.Open(c.FixtureFilePath)
-	if err != nil {
-		return nil, err
-	}
-	reader := csv.NewReader(f)
-	reader.LazyQuotes = true
-	_, _ = reader.Read() // discard header row
-
-	// generate tests
-	out := make(chan test)
-	go func() {
-		cursor := 0
-		for {
-			cursor++
-
-			fields, err := reader.Read()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				log.Error(err)
-				continue
-			}
-
-			if len(fields) != 3 {
-				log.Errorf("invalid row at #%d", cursor)
-				continue
-			}
-
-			if len(rows) > 0 {
-				if _, ok := rows[cursor]; !ok {
-					continue
-				}
-			}
-
-			dma := fields[0]
-			apikey := fields[1]
-			path := fields[2]
-			out <- test{
-				Row: cursor,
-				Before: args{
-					Method: http.MethodGet,
-					Path:   c.BeforeBasePath + path,
-					Headers: map[string]string{
-						headerAPIKey:       apikey,
-						headerUserDma:      dma,
-						headerToken:        c.AccessToken,
-						headerCacheControl: "no-cache",
-					},
-				},
-				After: args{
-					Method: http.MethodGet,
-					Path:   c.AfterBasePath + path,
-					Headers: map[string]string{
-						headerAPIKey:                      apikey,
-						headerUserDma:                     dma,
-						headerToken:                       c.AccessToken,
-						headerCacheControl:                "no-cache",
-						"X-Feature-V1getvideobyidenabled": "true",
-					},
-				},
-			}
-		}
-
-		f.Close()
-		close(out)
-	}()
-
-	return out, nil
-}
-
-type result struct {
-	e          test
-	beforeCode string
-	beforeBody map[string]json.RawMessage
-	afterCode  string
-	afterBody  map[string]json.RawMessage
-}
-
-func assert(ctx context.Context, client httpClient, in <-chan test) <-chan result {
-	out := make(chan result)
+func assert(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}) <-chan result {
+	results := make(chan result)
 
 	go func() {
-		for e := range in {
-			// create requests
-			before, err := http.NewRequestWithContext(ctx, e.Before.Method, e.Before.Path, nil)
+		for t := range tests {
+			r, err := exec(ctx, client, t, ignore)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
-			for k, v := range e.Before.Headers {
-				before.Header.Add(k, v)
-			}
-
-			after, err := http.NewRequestWithContext(ctx, e.After.Method, e.After.Path, nil)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			for k, v := range e.After.Headers {
-				after.Header.Add(k, v)
-			}
-
-			// make requests
-			bResp, err := client.Do(before)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			httpTrace(before, bResp)
-
-			aResp, err := client.Do(after)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			httpTrace(after, aResp)
-
-			// unmashall & return
-			d := result{e: e}
-
-			d.beforeCode = bResp.Status
-			err = json.NewDecoder(bResp.Body).Decode(&d.beforeBody)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			bResp.Body.Close()
-
-			d.afterCode = aResp.Status
-			err = json.NewDecoder(aResp.Body).Decode(&d.afterBody)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			aResp.Body.Close()
-
-			out <- d
+			results <- r
 		}
 
-		close(out)
+		close(results)
 	}()
 
-	return out
+	return results
 }
 
 func merge(cs ...<-chan result) <-chan result {

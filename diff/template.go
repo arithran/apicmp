@@ -16,4 +16,20 @@ curl --location --request {{ .After.Method }} '{{ .After.Path }}' \{{range $k, $
 Result:
 `
 
-var curlTpl = template.Must(template.New("curl").Parse(curlTemplate))
+const summaryTemplate = `
+Summary:
+  Total Tests : {{.Count}}
+  Passed      : {{.Passed}}
+  Failed      : {{.Failed}}
+  Failed Rows : {{.FailedRowsStr}}
+  Time        : {{.Time}}
+
+Issues Found:
+`
+
+var tpl *template.Template
+
+func init() {
+	tpl = template.Must(template.New("curl").Parse(curlTemplate))
+	tpl = template.Must(tpl.New("summary").Parse(summaryTemplate))
+}
