@@ -10,7 +10,6 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/nsf/jsondiff"
@@ -26,10 +25,11 @@ const (
 )
 
 type Summary struct {
-	Count      int
-	Passed     int
-	FailedRows []int
-	Issues     map[string]int
+	Count       int
+	Passed      int
+	FailedRows  []int
+	Issues      map[string]int
+	FieldIssues map[string][]int
 }
 
 type Config struct {
@@ -66,6 +66,7 @@ func Cmp(ctx context.Context, c Config) error {
 	// compute results
 	sum := Summary{
 		Issues: map[string]int{},
+		FieldIssues: map[string][]int{},
 	}
 	ignore := Atoam(c.IgnoreFields)
 	opts := jsondiff.DefaultConsoleOptions()
@@ -91,6 +92,7 @@ func Cmp(ctx context.Context, c Config) error {
 			if result != jsondiff.FullMatch {
 				delta = append(delta, []string{k, cleanDiff(diff)})
 				sum.Issues[k]++
+				sum.FieldIssues[k] = append(sum.FieldIssues[k], d.e.Row)
 			}
 		}
 
@@ -113,19 +115,16 @@ func Cmp(ctx context.Context, c Config) error {
 
 	sumTable := [][]string{}
 	for k, v := range sum.Issues {
-		sumTable = append(sumTable, []string{k, strconv.Itoa(v)})
+		sort.Ints(sum.FieldIssues[k])
+		sumTable = append(sumTable, []string{k, strconv.Itoa(v), intSliceToString(sum.FieldIssues[k], ",")})
 	}
 	sort.Sort(sortDelta(sumTable))
 	sort.Ints(sum.FailedRows)
-	failedRows := make([]string, len(sum.FailedRows))
-	for k, v := range sum.FailedRows {
-		failedRows[k] = strconv.Itoa(v)
-	}
 
-	fmt.Printf("Summary:\n Total Tests:%d\n Passed:%d\n Failed:%d\n Failed Rows:%s\n", sum.Count, sum.Passed, sum.Count-sum.Passed, strings.Join(failedRows, ","))
+	fmt.Printf("Summary:\n Total Tests:%d\n Passed:%d\n Failed:%d\n Failed Rows:%s\n", sum.Count, sum.Passed, sum.Count-sum.Passed, intSliceToString(sum.FailedRows, ","))
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAutoFormatHeaders(false)
-	table.SetHeader([]string{"Field", "Issues"})
+	table.SetHeader([]string{"Field", "Issues", "Failed Rows"})
 	table.SetBorder(false)
 	table.AppendBulk(sumTable)
 	table.Render()

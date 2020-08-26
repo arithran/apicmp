@@ -1,6 +1,7 @@
 package diff
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -115,4 +116,8 @@ func setLoglevel(level string) error {
 
 	log.SetLevel(l)
 	return nil
+}
+
+func intSliceToString(slice []int, s string) string {
+	return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(slice)), s), "[]")
 }
