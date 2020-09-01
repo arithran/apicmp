@@ -1,6 +1,7 @@
 package diff
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -58,6 +59,11 @@ func Atoam(csv string) map[string]struct{} {
 		ret[v] = struct{}{}
 	}
 	return ret
+}
+
+// Istoa converts a slice of int to Ascii
+func Istoa(slice []int, sep string) string {
+	return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(slice)), sep), "[]")
 }
 
 type sortDelta [][]string

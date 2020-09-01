@@ -1,6 +1,7 @@
 package diff
 
 import (
+	"context"
 	"encoding/csv"
 	"io"
 	"net/http"
@@ -22,7 +23,7 @@ type (
 	}
 )
 
-func generateTests(c Config) (<-chan test, error) {
+func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 	// read csv file
 	f, err := os.Open(c.FixtureFilePath)
 	if err != nil {
@@ -35,7 +36,10 @@ func generateTests(c Config) (<-chan test, error) {
 	// generate tests
 	out := make(chan test)
 	go func() {
+		defer close(out)
+		defer f.Close()
 		cursor := 0
+
 		for {
 			cursor++
 
@@ -62,7 +66,8 @@ func generateTests(c Config) (<-chan test, error) {
 			dma := fields[0]
 			apikey := fields[1]
 			path := fields[2]
-			out <- test{
+			select {
+			case out <- test{
 				Row: cursor,
 				Before: input{
 					Method: http.MethodGet,
@@ -85,11 +90,12 @@ func generateTests(c Config) (<-chan test, error) {
 						"X-Feature-V1getvideobyidenabled": "true",
 					},
 				},
+			}:
+			case <-ctx.Done():
+				return
 			}
 		}
 
-		f.Close()
-		close(out)
 	}()
 
 	return out, nil

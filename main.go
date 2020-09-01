@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/arithran/apicmp/diff"
 	"github.com/urfave/cli/v2"
@@ -83,7 +86,16 @@ func main() {
 					return nil
 				},
 				Action: func(c *cli.Context) error {
-					return diff.Cmp(c.Context, diff.Config{
+					ctx, cancel := context.WithCancel(c.Context)
+
+					go func() {
+						done := make(chan os.Signal, 1)
+						signal.Notify(done, os.Interrupt, syscall.SIGTERM)
+						<-done
+						cancel()
+					}()
+
+					return diff.Cmp(ctx, diff.Config{
 						BeforeBasePath:  c.String("beforePath"),
 						AfterBasePath:   c.String("afterPath"),
 						FixtureFilePath: c.String("fixtureFile"),
