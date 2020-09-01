@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -29,7 +28,7 @@ type Summary struct {
 	FailedRows    []int
 	FailedRowsStr string
 	Time          time.Duration
-	Issues        map[string]int
+	Issues        map[string][]int
 }
 
 type Config struct {
@@ -53,7 +52,7 @@ func Cmp(ctx context.Context, c Config) error {
 	}
 
 	// gen tests
-	tChan, err := generateTests(c)
+	tChan, err := generateTests(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -67,7 +66,7 @@ func Cmp(ctx context.Context, c Config) error {
 
 	// compute results
 	sum := Summary{
-		Issues: map[string]int{},
+		Issues: map[string][]int{},
 	}
 	results := merge(cs...)
 	for r := range results {
@@ -81,7 +80,7 @@ func Cmp(ctx context.Context, c Config) error {
 			table.SetHeader([]string{"Field", "Diff"})
 			table.SetBorder(false)
 			for _, v := range r.Diffs {
-				sum.Issues[v.Field]++
+				sum.Issues[v.Field] = append(sum.Issues[v.Field], r.e.Row)
 				table.Append([]string{v.Field, v.Delta})
 			}
 			table.Render()
@@ -93,23 +92,19 @@ func Cmp(ctx context.Context, c Config) error {
 
 	sumTable := [][]string{}
 	for k, v := range sum.Issues {
-		sumTable = append(sumTable, []string{k, strconv.Itoa(v)})
+		sumTable = append(sumTable, []string{k, strconv.Itoa(len(v)), Istoa(v, ",")})
 	}
 	sort.Sort(sortDelta(sumTable))
 	sort.Ints(sum.FailedRows)
-	failedRows := make([]string, len(sum.FailedRows))
-	for k, v := range sum.FailedRows {
-		failedRows[k] = strconv.Itoa(v)
-	}
 
 	sum.Failed = sum.Count - sum.Passed
-	sum.FailedRowsStr = strings.Join(failedRows, ",")
+	sum.FailedRowsStr = Istoa(sum.FailedRows, ",")
 	sum.Time = time.Since(start)
 
 	_ = tpl.ExecuteTemplate(os.Stdout, "summary", sum)
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAutoFormatHeaders(false)
-	table.SetHeader([]string{"Field", "Issues"})
+	table.SetHeader([]string{"Field", "Issues", "Rows"})
 	table.SetBorder(false)
 	table.AppendBulk(sumTable)
 	table.Render()
