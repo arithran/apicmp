@@ -1,2 +1,54 @@
 # apicmp
-compare 2 apis, before and after
+A command-line utility that compares **Before** and **After** responses of an API. This tool is ideal for regression testing between prod and qa environments.
+
+## Usage
+```bash
+$ apicmp help diff
+NAME:
+   apicmp diff - apicmp diff
+
+USAGE:
+   apicmp diff [command options] [arguments...]
+
+OPTIONS:
+   --before value, -B value  --before https://api.example.com
+   --after value, -A value   --after: https://qa-api.example.com
+   --file value, -F value    --file: ~/Downloads/fixtures.csv
+   --header value, -H value  --header 'Cache-Control: no-cache'
+   --ignore value, -I value  --ignore modifiedDate,analytics
+   --rows value, -R value    --rows 1,7,12 (Rerun failed or specific tests from file)
+   --retry value             --retry 424,500 (HTTP status codes)
+   --threads value           --threads 10 (default: "4")
+   --loglevel value          --loglevel info (default: "debug")
+```
+
+## Examples
+```bash
+$ apicmp diff \
+-B https://api.example.com \
+-A https://qa-api.example.com \
+-F ~/Downloads/fixture.csv \
+-H 'Cache-Control: no-cache' \
+-I modifiedDate,analytics \
+--retry 500 \
+--threads 10
+```
+
+## Installation
+- Download the latest binary for your OS release from the [releases page](https://github.com/arithran/apicmp/releases)
+- Rename the file to `apicmp`
+- Make the file executable (`chmod +x apicmp`)
+- Checkout the help menu for usage instructions `apicmp help`
+- (Optional Step) Move it to a folder in your PATH variable. (`mv apicmp /usr/local/bin/`)
+
+
+
+## Features
+- [x] Print Test Summary
+- [x] Trace HTTP Requests and Responses (`--loglevel trace`)
+- [x] Multithreading (`--threads 20`)
+- [x] Ctrl-C in the middle of a long test run and Print Summary summary of tests that were run
+
+
+## Contributing
+Pull requests are welcome!

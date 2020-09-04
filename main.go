@@ -34,54 +34,59 @@ func main() {
 				Usage: "apicmp diff",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:    "beforePath",
-						Aliases: []string{"b"},
-						Usage:   "Eg: http://localhost:4140/nodevideo_v1",
+						Name:    "before",
+						Aliases: []string{"B"},
+						Usage:   "--before https://api.example.com",
 					},
 					&cli.StringFlag{
-						Name:    "afterPath",
-						Aliases: []string{"a"},
-						Usage:   "Eg: http://localhost:4140/video_v2",
+						Name:    "after",
+						Aliases: []string{"A"},
+						Usage:   "--after: https://qa-api.example.com",
 					},
 					&cli.StringFlag{
-						Name:    "fixtureFile",
-						Aliases: []string{"f"},
-						Usage:   "Eg: ~/Downloads/fixture.csv",
+						Name:    "file",
+						Aliases: []string{"F"},
+						Usage:   "--file: ~/Downloads/fixtures.csv",
+					},
+					&cli.StringSliceFlag{
+						Name:    "header",
+						Aliases: []string{"H"},
+						Usage:   "--header 'Cache-Control: no-cache' ",
 					},
 					&cli.StringFlag{
-						Name:    "ignoreFields",
-						Aliases: []string{"i"},
-						Usage:   "Eg: @id,createdDate,ContentSKUs",
+						Name:    "ignore",
+						Aliases: []string{"I"},
+						Usage:   "--ignore modifiedDate,analytics",
 					},
 					&cli.StringFlag{
 						Name:    "rows",
-						Aliases: []string{"r"},
-						Usage:   "Eg: 1,7,12 (rerun failed or specific tests)",
+						Aliases: []string{"R"},
+						Usage:   "--rows 1,7,12 (Rerun failed or specific tests from file)",
 					},
 					&cli.StringFlag{
 						Name:  "retry",
-						Usage: "Eg: 424,500 (retry specific status codes once)",
-					},
-					&cli.StringFlag{
-						Name:  "loglevel",
-						Value: "debug",
-						Usage: "Eg: debug",
+						Usage: "--retry 424,500 (HTTP status codes)",
 					},
 					&cli.StringFlag{
 						Name:  "threads",
 						Value: "4",
-						Usage: "Eg: 6",
+						Usage: "--threads 10",
+					},
+					&cli.StringFlag{
+						Name:  "loglevel",
+						Value: "debug",
+						Usage: "--loglevel info",
 					},
 				},
 				Before: func(c *cli.Context) error {
-					if c.String("beforePath") == "" {
-						return errors.New("beforePath required")
+					if c.String("before") == "" {
+						return errors.New("before required")
 					}
-					if c.String("afterPath") == "" {
-						return errors.New("afterPath required")
+					if c.String("after") == "" {
+						return errors.New("after required")
 					}
-					if c.String("fixtureFile") == "" {
-						return errors.New("fixtureFile required")
+					if c.String("file") == "" {
+						return errors.New("file required")
 					}
 					return nil
 				},
@@ -96,11 +101,12 @@ func main() {
 					}()
 
 					return diff.Cmp(ctx, diff.Config{
-						BeforeBasePath:  c.String("beforePath"),
-						AfterBasePath:   c.String("afterPath"),
-						FixtureFilePath: c.String("fixtureFile"),
+						BeforeBasePath:  c.String("before"),
+						AfterBasePath:   c.String("after"),
+						FixtureFilePath: c.String("file"),
+						Headers:         c.StringSlice("header"),
 						AccessToken:     c.String("token"),
-						IgnoreFields:    diff.Atoam(c.String("ignoreFields")),
+						IgnoreFields:    diff.Atoam(c.String("ignore")),
 						Rows:            diff.Atoim(c.String("rows")),
 						Retry:           diff.Atoim(c.String("retry")),
 						LogLevel:        c.String("loglevel"),

@@ -6,9 +6,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
+
+const headerParts = 2
 
 type (
 	test struct {
@@ -66,36 +69,49 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 			dma := fields[0]
 			apikey := fields[1]
 			path := fields[2]
-			select {
-			case out <- test{
+
+			t := test{
 				Row: cursor,
 				Before: input{
 					Method: http.MethodGet,
 					Path:   c.BeforeBasePath + path,
 					Headers: map[string]string{
-						headerAPIKey:       apikey,
-						headerUserDma:      dma,
-						headerToken:        c.AccessToken,
-						headerCacheControl: "no-cache",
+						headerAPIKey:  apikey,
+						headerUserDma: dma,
+						headerToken:   c.AccessToken,
 					},
 				},
 				After: input{
 					Method: http.MethodGet,
 					Path:   c.AfterBasePath + path,
 					Headers: map[string]string{
-						headerAPIKey:                      apikey,
-						headerUserDma:                     dma,
-						headerToken:                       c.AccessToken,
-						headerCacheControl:                "no-cache",
-						"X-Feature-V1getvideobyidenabled": "true",
+						headerAPIKey:  apikey,
+						headerUserDma: dma,
+						headerToken:   c.AccessToken,
 					},
 				},
-			}:
+			}
+
+			for _, h := range c.Headers {
+				parts := strings.Split(h, ":")
+				if len(parts) != headerParts {
+					log.Errorf("skipping invalid header --header %s", h)
+					continue
+				}
+
+				k := strings.TrimSpace(parts[0])
+				v := strings.TrimSpace(parts[1])
+
+				t.Before.Headers[k] = v
+				t.After.Headers[k] = v
+			}
+
+			select {
+			case out <- t:
 			case <-ctx.Done():
 				return
 			}
 		}
-
 	}()
 
 	return out, nil
