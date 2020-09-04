@@ -36,46 +36,46 @@ func main() {
 					&cli.StringFlag{
 						Name:    "before",
 						Aliases: []string{"B"},
-						Usage:   "--before https://api.example.com",
+						Usage:   "https://api.example.com",
 					},
 					&cli.StringFlag{
 						Name:    "after",
 						Aliases: []string{"A"},
-						Usage:   "--after: https://qa-api.example.com",
+						Usage:   "https://qa-api.example.com",
 					},
 					&cli.StringFlag{
 						Name:    "file",
 						Aliases: []string{"F"},
-						Usage:   "--file: ~/Downloads/fixtures.csv",
+						Usage:   "~/Downloads/fixtures.csv",
 					},
 					&cli.StringSliceFlag{
 						Name:    "header",
 						Aliases: []string{"H"},
-						Usage:   "--header 'Cache-Control: no-cache' ",
+						Usage:   "'Cache-Control: no-cache' ",
 					},
 					&cli.StringFlag{
 						Name:    "ignore",
 						Aliases: []string{"I"},
-						Usage:   "--ignore modifiedDate,analytics",
+						Usage:   "modifiedDate,analytics",
 					},
 					&cli.StringFlag{
 						Name:    "rows",
 						Aliases: []string{"R"},
-						Usage:   "--rows 1,7,12 (Rerun failed or specific tests from file)",
+						Usage:   "1,7,12 (Rerun failed or specific tests from file)",
 					},
 					&cli.StringFlag{
 						Name:  "retry",
-						Usage: "--retry 424,500 (HTTP status codes)",
+						Usage: "424,500 (HTTP status codes)",
 					},
 					&cli.StringFlag{
 						Name:  "threads",
 						Value: "4",
-						Usage: "--threads 10",
+						Usage: "10",
 					},
 					&cli.StringFlag{
 						Name:  "loglevel",
 						Value: "debug",
-						Usage: "--loglevel info",
+						Usage: "info",
 					},
 				},
 				Before: func(c *cli.Context) error {

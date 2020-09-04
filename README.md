@@ -11,15 +11,15 @@ USAGE:
    apicmp diff [command options] [arguments...]
 
 OPTIONS:
-   --before value, -B value  --before https://api.example.com
-   --after value, -A value   --after: https://qa-api.example.com
-   --file value, -F value    --file: ~/Downloads/fixtures.csv
-   --header value, -H value  --header 'Cache-Control: no-cache'
-   --ignore value, -I value  --ignore modifiedDate,analytics
-   --rows value, -R value    --rows 1,7,12 (Rerun failed or specific tests from file)
-   --retry value             --retry 424,500 (HTTP status codes)
-   --threads value           --threads 10 (default: "4")
-   --loglevel value          --loglevel info (default: "debug")
+   --before value, -B value  https://api.example.com
+   --after value, -A value   https://qa-api.example.com
+   --file value, -F value    ~/Downloads/fixtures.csv
+   --header value, -H value  'Cache-Control: no-cache'
+   --ignore value, -I value  modifiedDate,analytics
+   --rows value, -R value    1,7,12 (Rerun failed or specific tests from file)
+   --retry value             424,500 (HTTP status codes)
+   --threads value           10 (default: "4")
+   --loglevel value          info (default: "debug")
 ```
 
 ## Examples
