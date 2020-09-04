@@ -15,10 +15,9 @@ import (
 )
 
 const (
-	headerAPIKey       = "X-Api-Key"
-	headerUserDma      = "X-User-Dma"
-	headerToken        = "X-Access-Token"
-	headerCacheControl = "Cache-Control"
+	headerAPIKey  = "X-Api-Key"
+	headerUserDma = "X-User-Dma"
+	headerToken   = "X-Access-Token"
 )
 
 type Summary struct {
@@ -35,6 +34,7 @@ type Config struct {
 	BeforeBasePath  string
 	AfterBasePath   string
 	FixtureFilePath string
+	Headers         []string
 	AccessToken     string
 	IgnoreFields    map[string]struct{}
 	Rows            map[int]struct{}
@@ -119,7 +119,7 @@ func assert(ctx context.Context, client httpClient, tests <-chan test, ignore ma
 		for t := range tests {
 			r, err := exec(ctx, client, t, ignore)
 			if err != nil {
-				log.Error(err)
+				log.Errorf("row:%d err:%v", t.Row, err)
 				continue
 			}
 			results <- r
