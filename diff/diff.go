@@ -2,6 +2,7 @@ package diff
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -119,7 +120,12 @@ func assert(ctx context.Context, client httpClient, tests <-chan test, ignore ma
 		for t := range tests {
 			r, err := exec(ctx, client, t, ignore)
 			if err != nil {
-				log.Errorf("row:%d err:%v", t.Row, err)
+				if errors.Is(err, context.Canceled) {
+					log.Infof("row:%d was canceled", t.Row)
+				} else {
+					log.Errorf("row:%d err:%v", t.Row, err)
+				}
+
 				continue
 			}
 			results <- r
