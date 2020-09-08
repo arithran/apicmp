@@ -16,12 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	headerAPIKey  = "X-Api-Key"
-	headerUserDma = "X-User-Dma"
-	headerToken   = "X-Access-Token"
-)
-
 type Summary struct {
 	Count         int
 	Passed        int
@@ -37,7 +31,6 @@ type Config struct {
 	AfterBasePath   string
 	FixtureFilePath string
 	Headers         []string
-	AccessToken     string
 	IgnoreFields    map[string]struct{}
 	Rows            map[int]struct{}
 	Retry           map[int]struct{}

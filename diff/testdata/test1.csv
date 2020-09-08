@@ -1,3 +1,3 @@
-dma,apikey,path
-999,gOBxKVbwnZ794xXP6nTbXFz0HcbSfxQD,"/video/2387e4d6a7bede9342150d9afbd0d20f"
-636,gOBxKVbwnZ794xXP6nTbXFz0HcbSfxQD,"/video/3e3a3ecbf14f85db2c74a3b79452f3f1"
+X-User-Dma,X-Api-Key,path
+999,1234abcd,"/video/2387e4d6a7bede9342150d9afbd0d20f"
+636,1234abcd,"/video/3e3a3ecbf14f85db2c74a3b79452f3f1"
