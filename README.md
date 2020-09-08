@@ -18,7 +18,7 @@ OPTIONS:
    --ignore value, -I value  modifiedDate,analytics
    --rows value, -R value    1,7,12 (Rerun failed or specific tests from file)
    --retry value             424,500 (HTTP status codes)
-   --match value             full|superset (default: "full")
+   --match value             exact|superset (default: "exact")
    --threads value           10 (default: "4")
    --loglevel value          info (default: "debug")
 ```

@@ -13,7 +13,7 @@ import (
 )
 
 var validMatches = map[string]struct{}{
-	"full":     {},
+	"exact":    {},
 	"superset": {},
 }
 
@@ -74,8 +74,8 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:  "match",
-						Value: "full",
-						Usage: "full|superset",
+						Value: "exact",
+						Usage: "exact|superset",
 					},
 					&cli.StringFlag{
 						Name:  "threads",
