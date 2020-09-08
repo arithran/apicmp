@@ -21,18 +21,6 @@ func main() {
 	app := &cli.App{
 		Name:  "apicmp",
 		Usage: "The apicmp command diffs API responses between NodeJS and Go services",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "token",
-				EnvVars: []string{"X_API_TOKEN"},
-			},
-		},
-		Before: func(c *cli.Context) error {
-			if c.String("token") == "" {
-				return errors.New("X_API_TOKEN required")
-			}
-			return nil
-		},
 		Commands: []*cli.Command{
 			{
 				Name:  "diff",
@@ -118,7 +106,6 @@ func main() {
 						AfterBasePath:   c.String("after"),
 						FixtureFilePath: c.String("file"),
 						Headers:         c.StringSlice("header"),
-						AccessToken:     c.String("token"),
 						IgnoreFields:    diff.Atoam(c.String("ignore")),
 						Rows:            diff.Atoim(c.String("rows")),
 						Retry:           diff.Atoim(c.String("retry")),

@@ -1,8 +1,15 @@
 package diff
 
 import (
-	"reflect"
+	"context"
 	"testing"
+
+	as "github.com/stretchr/testify/assert"
+)
+
+const (
+	headerAPIKey  = "X-Api-Key"
+	headerUserDma = "X-User-Dma"
 )
 
 func Test_generateTests(t *testing.T) {
@@ -31,21 +38,16 @@ func Test_generateTests(t *testing.T) {
 						Method: "GET",
 						Path:   "http://before.api.com/video/2387e4d6a7bede9342150d9afbd0d20f",
 						Headers: map[string]string{
-							headerAPIKey:       "gOBxKVbwnZ794xXP6nTbXFz0HcbSfxQD",
-							headerUserDma:      "999",
-							headerToken:        "",
-							headerCacheControl: "no-cache",
+							headerAPIKey:  "1234abcd",
+							headerUserDma: "999",
 						},
 					},
 					After: input{
 						Method: "GET",
 						Path:   "http://after.api.com/video/2387e4d6a7bede9342150d9afbd0d20f",
 						Headers: map[string]string{
-							headerAPIKey:                      "gOBxKVbwnZ794xXP6nTbXFz0HcbSfxQD",
-							headerUserDma:                     "999",
-							headerToken:                       "",
-							headerCacheControl:                "no-cache",
-							"X-Feature-V1getvideobyidenabled": "true",
+							headerAPIKey:  "1234abcd",
+							headerUserDma: "999",
 						},
 					},
 				},
@@ -55,21 +57,16 @@ func Test_generateTests(t *testing.T) {
 						Method: "GET",
 						Path:   "http://before.api.com/video/3e3a3ecbf14f85db2c74a3b79452f3f1",
 						Headers: map[string]string{
-							headerAPIKey:       "gOBxKVbwnZ794xXP6nTbXFz0HcbSfxQD",
-							headerUserDma:      "636",
-							headerToken:        "",
-							headerCacheControl: "no-cache",
+							headerAPIKey:  "1234abcd",
+							headerUserDma: "636",
 						},
 					},
 					After: input{
 						Method: "GET",
 						Path:   "http://after.api.com/video/3e3a3ecbf14f85db2c74a3b79452f3f1",
 						Headers: map[string]string{
-							headerAPIKey:                      "gOBxKVbwnZ794xXP6nTbXFz0HcbSfxQD",
-							headerUserDma:                     "636",
-							headerToken:                       "",
-							headerCacheControl:                "no-cache",
-							"X-Feature-V1getvideobyidenabled": "true",
+							headerAPIKey:  "1234abcd",
+							headerUserDma: "636",
 						},
 					},
 				},
@@ -79,7 +76,7 @@ func Test_generateTests(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testChan, err := generateTests(tt.args.c)
+			testChan, err := generateTests(context.Background(), tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("generateTests() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -89,9 +86,11 @@ func Test_generateTests(t *testing.T) {
 			for t := range testChan {
 				got = append(got, t)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("generateTests() = %v, want %v", got, tt.want)
-			}
+
+			as.Equal(t, tt.want, got)
+			// if !reflect.DeepEqual(got, tt.want) {
+			// 	t.Errorf("generateTests() = %v, want %v", got, tt.want)
+			// }
 		})
 	}
 }

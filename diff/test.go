@@ -3,15 +3,18 @@ package diff
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
 
-const headerParts = 2
+const (
+	headerParts = 2
+	unset       = -1
+)
 
 type (
 	test struct {
@@ -26,6 +29,81 @@ type (
 	}
 )
 
+type csvHelper struct {
+	method  int
+	path    int
+	body    int
+	headers map[string]int
+}
+
+func newCSVHelper() csvHelper {
+	return csvHelper{
+		method:  unset,
+		path:    unset,
+		body:    unset,
+		headers: make(map[string]int),
+	}
+}
+
+func (h csvHelper) validate() error {
+	if h.path == unset {
+		return errors.New("csv file is missing 'path' column. please see instructions at https://github.com/arithran/apicmp")
+	}
+
+	return nil
+}
+func (h csvHelper) Method(row []string) string {
+	if h.method != unset && len(row) > h.method {
+		return row[h.method]
+	}
+
+	return "GET"
+}
+func (h csvHelper) Path(row []string) string {
+	if h.path != unset && len(row) > h.path {
+		return row[h.path]
+	}
+
+	return ""
+}
+func (h csvHelper) Body(row []string) string {
+	if h.body != unset && len(row) > h.body {
+		return row[h.body]
+	}
+
+	return ""
+}
+func (h csvHelper) Headers(row []string) map[string]string {
+	hs := map[string]string{}
+
+	for k, v := range h.headers {
+		if len(row) > v {
+			hs[k] = row[v]
+		}
+	}
+
+	return hs
+}
+
+func (h csvHelper) totalFields() int {
+	var count int
+	if h.method != unset {
+		count++
+	}
+	if h.path != unset {
+		count++
+	}
+	if h.body != unset {
+		count++
+	}
+
+	if length := len(h.headers); length != 0 {
+		count += length
+	}
+
+	return count
+}
+
 func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 	// read csv file
 	f, err := os.Open(c.FixtureFilePath)
@@ -34,7 +112,34 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 	}
 	reader := csv.NewReader(f)
 	reader.LazyQuotes = true
-	_, _ = reader.Read() // discard header row
+
+	// lets determine the shape of this CSV file based on the header
+	header, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
+	h := newCSVHelper()
+	for k, v := range header {
+		switch v {
+		case "method":
+			h.method = k
+
+		case "path":
+			h.path = k
+
+		case "body":
+			h.body = k
+
+		default:
+			// anything else is a header
+			h.headers[v] = k
+		}
+	}
+	if err := h.validate(); err != nil {
+		return nil, err
+	}
+
+	totalFields := h.totalFields()
 
 	// generate tests
 	out := make(chan test)
@@ -55,7 +160,7 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 				continue
 			}
 
-			if len(fields) != 3 {
+			if len(fields) != totalFields {
 				log.Errorf("invalid row at #%d", cursor)
 				continue
 			}
@@ -66,29 +171,17 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 				}
 			}
 
-			dma := fields[0]
-			apikey := fields[1]
-			path := fields[2]
-
 			t := test{
 				Row: cursor,
 				Before: input{
-					Method: http.MethodGet,
-					Path:   c.BeforeBasePath + path,
-					Headers: map[string]string{
-						headerAPIKey:  apikey,
-						headerUserDma: dma,
-						headerToken:   c.AccessToken,
-					},
+					Method:  h.Method(fields),
+					Path:    c.BeforeBasePath + h.Path(fields),
+					Headers: h.Headers(fields),
 				},
 				After: input{
-					Method: http.MethodGet,
-					Path:   c.AfterBasePath + path,
-					Headers: map[string]string{
-						headerAPIKey:  apikey,
-						headerUserDma: dma,
-						headerToken:   c.AccessToken,
-					},
+					Method:  h.Method(fields),
+					Path:    c.AfterBasePath + h.Path(fields),
+					Headers: h.Headers(fields),
 				},
 			}
 
