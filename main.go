@@ -12,6 +12,11 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var validMatches = map[string]struct{}{
+	"full":     {},
+	"superset": {},
+}
+
 func main() {
 	app := &cli.App{
 		Name:  "apicmp",
@@ -68,6 +73,11 @@ func main() {
 						Usage: "424,500 (HTTP status codes)",
 					},
 					&cli.StringFlag{
+						Name:  "match",
+						Value: "full",
+						Usage: "full|superset",
+					},
+					&cli.StringFlag{
 						Name:  "threads",
 						Value: "4",
 						Usage: "10",
@@ -87,6 +97,9 @@ func main() {
 					}
 					if c.String("file") == "" {
 						return errors.New("file required")
+					}
+					if _, ok := validMatches[c.String("match")]; !ok {
+						return errors.New("invalid --match flag")
 					}
 					return nil
 				},
@@ -109,6 +122,7 @@ func main() {
 						IgnoreFields:    diff.Atoam(c.String("ignore")),
 						Rows:            diff.Atoim(c.String("rows")),
 						Retry:           diff.Atoim(c.String("retry")),
+						Match:           c.String("match"),
 						LogLevel:        c.String("loglevel"),
 						Threads:         c.Int("threads"),
 					})

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/arithran/jsondiff"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 )
@@ -40,6 +41,7 @@ type Config struct {
 	IgnoreFields    map[string]struct{}
 	Rows            map[int]struct{}
 	Retry           map[int]struct{}
+	Match           string
 	LogLevel        string
 	Threads         int
 }
@@ -60,9 +62,16 @@ func Cmp(ctx context.Context, c Config) error {
 
 	// init assertion workers
 	client := newRetriableHTTPClient(&http.Client{}, c.Retry)
+	var wantMatch jsondiff.Difference
+	switch c.Match {
+	case "superset":
+		wantMatch = jsondiff.SupersetMatch
+	default:
+		wantMatch = jsondiff.FullMatch
+	}
 	cs := make([]<-chan result, c.Threads)
 	for i := 0; i < c.Threads; i++ {
-		cs[i] = assert(ctx, client, tChan, c.IgnoreFields)
+		cs[i] = assert(ctx, client, tChan, c.IgnoreFields, wantMatch)
 	}
 
 	// compute results
@@ -113,12 +122,12 @@ func Cmp(ctx context.Context, c Config) error {
 	return nil
 }
 
-func assert(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}) <-chan result {
+func assert(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}, wantMatch jsondiff.Difference) <-chan result {
 	results := make(chan result)
 
 	go func() {
 		for t := range tests {
-			r, err := exec(ctx, client, t, ignore)
+			r, err := exec(ctx, client, t, ignore, wantMatch)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					log.Infof("row:%d was canceled", t.Row)

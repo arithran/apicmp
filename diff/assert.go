@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/nsf/jsondiff"
+	"github.com/arithran/jsondiff"
 )
 
 var opts jsondiff.Options
@@ -25,7 +25,7 @@ type (
 	}
 )
 
-func exec(ctx context.Context, c httpClient, t test, ignore map[string]struct{}) (result, error) {
+func exec(ctx context.Context, c httpClient, t test, ignore map[string]struct{}, wantMatch jsondiff.Difference) (result, error) {
 	var err error
 	res := result{
 		e: t,
@@ -47,7 +47,8 @@ func exec(ctx context.Context, c httpClient, t test, ignore map[string]struct{})
 				continue
 			}
 
-			if match, delta := jsondiff.Compare(v, res.After.Body[k], &opts); match != jsondiff.FullMatch {
+			match, delta := jsondiff.Compare(res.After.Body[k], v, &opts)
+			if match > wantMatch {
 				res.Diffs = append(res.Diffs, diff{
 					Field: k,
 					Delta: cleanDiff(delta),

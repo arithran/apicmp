@@ -18,7 +18,7 @@ $(NAME)-%:
 
 dist: $(NAME)-darwin $(NAME)-linux $(NAME)-windows
 
-release: dist
+release:
 	semantic-release -noci -ghr -vf -slug arithran/apicmp
 	ghr $$(cat .ghr) dist
 
