@@ -49,7 +49,7 @@ func main() {
 					&cli.StringFlag{
 						Name:    "ignore",
 						Aliases: []string{"I"},
-						Usage:   "modifiedDate,analytics",
+						Usage:   "createdAt,modifiedAt",
 					},
 					&cli.StringFlag{
 						Name:    "rows",

@@ -1,6 +1,7 @@
 package diff
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -77,7 +78,11 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	o := output{}
 
 	// request
-	req, err := http.NewRequestWithContext(ctx, i.Method, i.Path, nil)
+	var bs *bytes.Buffer
+	if i.Body != "" {
+		bs = bytes.NewBufferString(i.Body)
+	}
+	req, err := http.NewRequestWithContext(ctx, i.Method, i.Path, bs)
 	if err != nil {
 		return o, err
 	}

@@ -64,7 +64,7 @@ func Cmp(ctx context.Context, c Config) error {
 	}
 	cs := make([]<-chan result, c.Threads)
 	for i := 0; i < c.Threads; i++ {
-		cs[i] = assert(ctx, client, tChan, c.IgnoreFields, wantMatch)
+		cs[i] = compare(ctx, client, tChan, c.IgnoreFields, wantMatch)
 	}
 
 	// compute results
@@ -115,7 +115,7 @@ func Cmp(ctx context.Context, c Config) error {
 	return nil
 }
 
-func assert(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}, wantMatch jsondiff.Difference) <-chan result {
+func compare(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}, wantMatch jsondiff.Difference) <-chan result {
 	results := make(chan result)
 
 	go func() {
