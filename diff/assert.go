@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/arithran/jsondiff"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 var opts jsondiff.Options
@@ -78,33 +79,46 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	o := output{}
 
 	// request
-	var bs *bytes.Buffer
+	var err error
+	var req *http.Request
 	if i.Body != "" {
-		bs = bytes.NewBufferString(i.Body)
+		req, err = http.NewRequestWithContext(ctx, i.Method, i.Path, bytes.NewReader([]byte(i.Body)))
+	} else {
+		req, err = http.NewRequestWithContext(ctx, i.Method, i.Path, nil)
 	}
-	req, err := http.NewRequestWithContext(ctx, i.Method, i.Path, bs)
 	if err != nil {
+		fmt.Println("HI NewRequestWithContext")
 		return o, err
 	}
 	for k, v := range i.Headers {
 		req.Header.Add(k, v)
 	}
+	retryableReq, err := retryablehttp.FromRequest(req)
+	if err != nil {
+		fmt.Println("HI FromRequest")
+		return o, err
+	}
 
 	// response
-	resp, err := c.Do(req)
+	fmt.Println("HI Do")
+	resp, err := c.Do(retryableReq)
 	if err != nil {
+		fmt.Println("err Do")
 		return o, err
 	}
 	httpTrace(req, resp)
 
 	// decode
 	o.Code = resp.Status
+	fmt.Println("HI Decode")
 	err = json.NewDecoder(resp.Body).Decode(&o.Body)
 	if err != nil {
+		fmt.Println("err Decode")
 		return o, err
 	}
 	resp.Body.Close()
 
+	fmt.Println("HI Closed")
 	return o, nil
 }
 

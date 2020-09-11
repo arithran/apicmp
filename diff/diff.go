@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -54,7 +53,7 @@ func Cmp(ctx context.Context, c Config) error {
 	}
 
 	// init assertion workers
-	client := newRetriableHTTPClient(&http.Client{}, c.Retry)
+	client := newRetriableHTTPClient(c.Retry)
 	var wantMatch jsondiff.Difference
 	switch c.Match {
 	case "superset":
