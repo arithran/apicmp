@@ -1,11 +1,9 @@
 package diff
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sort"
 
 	"github.com/arithran/jsondiff"
@@ -80,11 +78,11 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 
 	// request
 	var err error
-	var req *http.Request
+	var req *retryablehttp.Request
 	if i.Body != "" {
-		req, err = http.NewRequestWithContext(ctx, i.Method, i.Path, bytes.NewReader([]byte(i.Body)))
+		req, err = retryablehttp.NewRequest(i.Method, i.Path, []byte(i.Body))
 	} else {
-		req, err = http.NewRequestWithContext(ctx, i.Method, i.Path, nil)
+		req, err = retryablehttp.NewRequest(i.Method, i.Path, nil)
 	}
 	if err != nil {
 		return o, err
@@ -92,17 +90,13 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	for k, v := range i.Headers {
 		req.Header.Add(k, v)
 	}
-	retryableReq, err := retryablehttp.FromRequest(req)
-	if err != nil {
-		return o, err
-	}
 
 	// response
-	resp, err := c.Do(retryableReq)
+	resp, err := c.Do(req.WithContext(ctx))
 	if err != nil {
 		return o, err
 	}
-	httpTrace(req, resp)
+	httpTrace(nil, resp)
 
 	// decode
 	o.Code = resp.Status

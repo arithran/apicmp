@@ -40,9 +40,13 @@ func newRetryPolicy(retry map[int]struct{}) retryablehttp.CheckRetry {
 }
 
 func httpTrace(req *http.Request, resp *http.Response) {
-	reqStr, _ := httputil.DumpRequestOut(req, true)
-	log.Tracef("---TRACE REQUEST---\n%s\n--- END ---\n\n", reqStr)
+	if req != nil {
+		reqStr, _ := httputil.DumpRequestOut(req, true)
+		log.Tracef("---TRACE REQUEST---\n%s\n--- END ---\n\n", reqStr)
+	}
 
-	respStr, _ := httputil.DumpResponse(resp, true)
-	log.Tracef("---TRACE RESPONSE---\n%s\n--- END ---\n\n", respStr)
+	if resp != nil {
+		respStr, _ := httputil.DumpResponse(resp, true)
+		log.Tracef("---TRACE RESPONSE---\n%s\n--- END ---\n\n", respStr)
+	}
 }
