@@ -87,7 +87,6 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 		req, err = http.NewRequestWithContext(ctx, i.Method, i.Path, nil)
 	}
 	if err != nil {
-		fmt.Println("HI NewRequestWithContext")
 		return o, err
 	}
 	for k, v := range i.Headers {
@@ -95,30 +94,24 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	}
 	retryableReq, err := retryablehttp.FromRequest(req)
 	if err != nil {
-		fmt.Println("HI FromRequest")
 		return o, err
 	}
 
 	// response
-	fmt.Println("HI Do")
 	resp, err := c.Do(retryableReq)
 	if err != nil {
-		fmt.Println("err Do")
 		return o, err
 	}
 	httpTrace(req, resp)
 
 	// decode
 	o.Code = resp.Status
-	fmt.Println("HI Decode")
 	err = json.NewDecoder(resp.Body).Decode(&o.Body)
 	if err != nil {
-		fmt.Println("err Decode")
 		return o, err
 	}
 	resp.Body.Close()
 
-	fmt.Println("HI Closed")
 	return o, nil
 }
 
