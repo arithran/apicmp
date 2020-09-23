@@ -77,15 +77,11 @@ func Cmp(ctx context.Context, c Config) error {
 		if len(r.Diffs) > 0 {
 			_ = tpl.ExecuteTemplate(os.Stdout, "curl", r.e)
 			sum.FailedRows = append(sum.FailedRows, r.e.Row)
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetAutoFormatHeaders(false)
-			table.SetHeader([]string{"Field", "Diff"})
-			table.SetBorder(false)
 			for _, v := range r.Diffs {
 				sum.Issues[v.Field] = append(sum.Issues[v.Field], r.e.Row)
-				table.Append([]string{v.Field, v.Delta})
+				fmt.Println(v.Field + ":")
+				fmt.Println(v.Delta)
 			}
-			table.Render()
 			fmt.Printf("\n\n")
 		} else {
 			sum.Passed++

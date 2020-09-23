@@ -92,6 +92,7 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	}
 
 	// response
+	httpTrace(req.Request, nil)
 	resp, err := c.Do(req.WithContext(ctx))
 	if err != nil {
 		return o, err

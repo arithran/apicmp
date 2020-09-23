@@ -2,7 +2,6 @@ package diff
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 
@@ -16,15 +15,13 @@ type httpClient interface {
 
 func newRetriableHTTPClient(retry map[int]struct{}) httpClient {
 	c := retryablehttp.NewClient()
-	c.Logger = log.New()
-	// c.CheckRetry = newRetryPolicy(retry)
-	c.RetryMax = 0
+	c.Logger = nil
+	c.CheckRetry = newRetryPolicy(retry)
 	return c
 }
 
 func newRetryPolicy(retry map[int]struct{}) retryablehttp.CheckRetry {
 	return func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-		fmt.Println("--- DEBUG --- in newRetrypolicy")
 		// do not retry on context.Canceled or context.DeadlineExceeded
 		if ctx.Err() != nil {
 			return false, ctx.Err()
