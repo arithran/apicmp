@@ -16,7 +16,7 @@ OPTIONS:
    --after value, -A value   https://qa-api.example.com
    --file value, -F value    ~/Downloads/fixtures.csv
    --header value, -H value  'Cache-Control: no-cache'
-   --ignore value, -I value  modifiedDate,analytics
+   --ignore value, -I value  createdAt,modifiedAt
    --rows value, -R value    1,7,12 (Rerun failed or specific tests from file)
    --retry value             424,500 (HTTP status codes)
    --match value             exact|superset (default: "exact")
@@ -38,12 +38,12 @@ OPTIONS:
    - `path`: The value is required and is appended to the `--before` & `--after` options provided to the command. Double quotes maybe used if there are any spaces.
    - `body`: This is currently reserved for future use. Currenly this tool only supports the `GET` method.
    - All other fields will forwarded as headers.
-  
- Example File:
+ 
+Example File:
 ```
-X-User-Id,X-Api-Key,path
-0242ac120002,f06f3cf8,/video/2387e4d6a7bede9342150d9afbd0d20f
-84198bce24b4,f06f3cf8,/video/3e3a3ecbf14f85db2c74a3b79452f3f1
+path,X-Forwarded-For,X-Api-Key
+/users/1,192.168.1.1,abcd
+/users/2,192.168.1.2,abcd
 ```
 
 ## Examples
@@ -51,10 +51,10 @@ X-User-Id,X-Api-Key,path
 $ apicmp diff \
 -B https://api.example.com \
 -A https://qa-api.example.com \
--F ~/Downloads/fixture.csv \
--H 'Authorization: Bearer <TOKEN>' \
+-F ~/Documents/regression_test1.csv \
+-H 'Authorization: Bearer <MY_TOKEN>' \
 -H 'Cache-Control: no-cache' \
--I modifiedDate,analytics \
+-I createdAt,modifiedAt \
 --retry 500 \
 --threads 10
 
@@ -94,8 +94,8 @@ Issues Found:
 - [x] Trace HTTP Requests and Responses (`--loglevel trace`)
 - [x] Multithreading (`--threads 20`)
 - [x] Ctrl-C in the middle of a long test run and Print Summary summary of tests that were run
-- [ ] Support DELETE method
-- [ ] Support POST, PUT methods
+- [x] Support GET, DELETE methods
+- [x] Support POST, PUT methods
 
 
 ## Contributing
