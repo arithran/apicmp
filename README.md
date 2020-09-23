@@ -61,7 +61,7 @@ $ apicmp diff \
 ```
 
 Output:
-> Tip: Failed Rows can be used with the `--rows` cli option to re-test just the failed ones
+> Tip: 'Failed Rows' can be retried with the `--rows` cli option
 
 ```bash
 $ Summary:
