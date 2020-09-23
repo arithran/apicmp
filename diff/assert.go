@@ -92,7 +92,7 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	}
 
 	// response
-	httpTraceReq(req.Request)
+	httpTraceReq(req)
 	resp, err := c.Do(req.WithContext(ctx))
 	if err != nil {
 		return o, err

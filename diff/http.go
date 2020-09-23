@@ -1,7 +1,9 @@
 package diff
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 
@@ -36,8 +38,12 @@ func newRetryPolicy(retry map[int]struct{}) retryablehttp.CheckRetry {
 	}
 }
 
-func httpTraceReq(req *http.Request) {
-	reqStr, _ := httputil.DumpRequestOut(req, true)
+func httpTraceReq(req *retryablehttp.Request) {
+	if bs, err := req.BodyBytes(); err == nil {
+		req.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bs))
+	}
+
+	reqStr, _ := httputil.DumpRequestOut(req.Request, true)
 	log.Tracef("---TRACE REQUEST---\n%s\n--- END ---\n\n", reqStr)
 }
 func httpTraceResp(resp *http.Response) {
