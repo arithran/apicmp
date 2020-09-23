@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sort"
 
 	"github.com/arithran/jsondiff"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 var opts jsondiff.Options
@@ -77,7 +77,13 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	o := output{}
 
 	// request
-	req, err := http.NewRequestWithContext(ctx, i.Method, i.Path, nil)
+	var err error
+	var req *retryablehttp.Request
+	if i.Body != "" {
+		req, err = retryablehttp.NewRequest(i.Method, i.Path, []byte(i.Body))
+	} else {
+		req, err = retryablehttp.NewRequest(i.Method, i.Path, nil)
+	}
 	if err != nil {
 		return o, err
 	}
@@ -86,11 +92,12 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 	}
 
 	// response
-	resp, err := c.Do(req)
+	httpTraceReq(req)
+	resp, err := c.Do(req.WithContext(ctx))
 	if err != nil {
 		return o, err
 	}
-	httpTrace(req, resp)
+	httpTraceResp(resp)
 
 	// decode
 	o.Code = resp.Status

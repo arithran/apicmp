@@ -26,6 +26,7 @@ type (
 		Method  string
 		Path    string
 		Headers map[string]string
+		Body    string
 	}
 )
 
@@ -36,13 +37,35 @@ type csvHelper struct {
 	headers map[string]int
 }
 
-func newCSVHelper() csvHelper {
-	return csvHelper{
+func newCSVHelper(header []string) csvHelper {
+	h := csvHelper{
 		method:  unset,
 		path:    unset,
 		body:    unset,
 		headers: make(map[string]int),
 	}
+
+	for k, v := range header {
+		// strip BOM
+		v = strings.Replace(v, "\ufeff", "", -1)
+
+		switch v {
+		case "method":
+			h.method = k
+
+		case "path":
+			h.path = k
+
+		case "body":
+			h.body = k
+
+		default:
+			// anything else is a header
+			h.headers[v] = k
+		}
+	}
+
+	return h
 }
 
 func (h csvHelper) validate() error {
@@ -118,23 +141,7 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := newCSVHelper()
-	for k, v := range header {
-		switch v {
-		case "method":
-			h.method = k
-
-		case "path":
-			h.path = k
-
-		case "body":
-			h.body = k
-
-		default:
-			// anything else is a header
-			h.headers[v] = k
-		}
-	}
+	h := newCSVHelper(header)
 	if err := h.validate(); err != nil {
 		return nil, err
 	}
@@ -177,11 +184,13 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 					Method:  h.Method(fields),
 					Path:    c.BeforeBasePath + h.Path(fields),
 					Headers: h.Headers(fields),
+					Body:    h.Body(fields),
 				},
 				After: input{
 					Method:  h.Method(fields),
 					Path:    c.AfterBasePath + h.Path(fields),
 					Headers: h.Headers(fields),
+					Body:    h.Body(fields),
 				},
 			}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -54,7 +53,7 @@ func Cmp(ctx context.Context, c Config) error {
 	}
 
 	// init assertion workers
-	client := newRetriableHTTPClient(&http.Client{}, c.Retry)
+	client := newRetriableHTTPClient(c.Retry)
 	var wantMatch jsondiff.Difference
 	switch c.Match {
 	case "superset":
@@ -64,7 +63,7 @@ func Cmp(ctx context.Context, c Config) error {
 	}
 	cs := make([]<-chan result, c.Threads)
 	for i := 0; i < c.Threads; i++ {
-		cs[i] = assert(ctx, client, tChan, c.IgnoreFields, wantMatch)
+		cs[i] = compare(ctx, client, tChan, c.IgnoreFields, wantMatch)
 	}
 
 	// compute results
@@ -78,15 +77,11 @@ func Cmp(ctx context.Context, c Config) error {
 		if len(r.Diffs) > 0 {
 			_ = tpl.ExecuteTemplate(os.Stdout, "curl", r.e)
 			sum.FailedRows = append(sum.FailedRows, r.e.Row)
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetAutoFormatHeaders(false)
-			table.SetHeader([]string{"Field", "Diff"})
-			table.SetBorder(false)
 			for _, v := range r.Diffs {
 				sum.Issues[v.Field] = append(sum.Issues[v.Field], r.e.Row)
-				table.Append([]string{v.Field, v.Delta})
+				fmt.Println(v.Field + ":")
+				fmt.Println(v.Delta)
 			}
-			table.Render()
 			fmt.Printf("\n\n")
 		} else {
 			sum.Passed++
@@ -115,7 +110,7 @@ func Cmp(ctx context.Context, c Config) error {
 	return nil
 }
 
-func assert(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}, wantMatch jsondiff.Difference) <-chan result {
+func compare(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}, wantMatch jsondiff.Difference) <-chan result {
 	results := make(chan result)
 
 	go func() {

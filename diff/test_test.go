@@ -4,12 +4,7 @@ import (
 	"context"
 	"testing"
 
-	as "github.com/stretchr/testify/assert"
-)
-
-const (
-	headerAPIKey  = "X-Api-Key"
-	headerUserDma = "X-User-Dma"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_generateTests(t *testing.T) {
@@ -23,12 +18,12 @@ func Test_generateTests(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test 1",
+			name: "Test GET",
 			args: args{
 				c: Config{
 					BeforeBasePath:  "http://before.api.com",
 					AfterBasePath:   "http://after.api.com",
-					FixtureFilePath: "./testdata/test1.csv",
+					FixtureFilePath: "./testdata/get.csv",
 				},
 			},
 			want: []test{
@@ -36,18 +31,18 @@ func Test_generateTests(t *testing.T) {
 					Row: 1,
 					Before: input{
 						Method: "GET",
-						Path:   "http://before.api.com/video/2387e4d6a7bede9342150d9afbd0d20f",
+						Path:   "http://before.api.com/users/1",
 						Headers: map[string]string{
-							headerAPIKey:  "1234abcd",
-							headerUserDma: "999",
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.1",
 						},
 					},
 					After: input{
 						Method: "GET",
-						Path:   "http://after.api.com/video/2387e4d6a7bede9342150d9afbd0d20f",
+						Path:   "http://after.api.com/users/1",
 						Headers: map[string]string{
-							headerAPIKey:  "1234abcd",
-							headerUserDma: "999",
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.1",
 						},
 					},
 				},
@@ -55,19 +50,74 @@ func Test_generateTests(t *testing.T) {
 					Row: 2,
 					Before: input{
 						Method: "GET",
-						Path:   "http://before.api.com/video/3e3a3ecbf14f85db2c74a3b79452f3f1",
+						Path:   "http://before.api.com/users/2",
 						Headers: map[string]string{
-							headerAPIKey:  "1234abcd",
-							headerUserDma: "636",
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.2",
 						},
 					},
 					After: input{
 						Method: "GET",
-						Path:   "http://after.api.com/video/3e3a3ecbf14f85db2c74a3b79452f3f1",
+						Path:   "http://after.api.com/users/2",
 						Headers: map[string]string{
-							headerAPIKey:  "1234abcd",
-							headerUserDma: "636",
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.2",
 						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Test POST",
+			args: args{
+				c: Config{
+					BeforeBasePath:  "http://before.api.com",
+					AfterBasePath:   "http://after.api.com",
+					FixtureFilePath: "./testdata/post.csv",
+				},
+			},
+			want: []test{
+				{
+					Row: 1,
+					Before: input{
+						Method: "POST",
+						Path:   "http://before.api.com/users/create",
+						Headers: map[string]string{
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.1",
+						},
+						Body: `{"email": "user1@example.com", "password": "pa$$word"}`,
+					},
+					After: input{
+						Method: "POST",
+						Path:   "http://after.api.com/users/create",
+						Headers: map[string]string{
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.1",
+						},
+						Body: `{"email": "user1@example.com", "password": "pa$$word"}`,
+					},
+				},
+				{
+					Row: 2,
+					Before: input{
+						Method: "POST",
+						Path:   "http://before.api.com/users/create",
+						Headers: map[string]string{
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.2",
+						},
+						Body: `{"email": "user2@example.com", "password": "pa$$word"}`,
+					},
+					After: input{
+						Method: "POST",
+						Path:   "http://after.api.com/users/create",
+						Headers: map[string]string{
+							"X-Api-Key":       "abcd",
+							"X-Forwarded-For": "192.168.1.2",
+						},
+						Body: `{"email": "user2@example.com", "password": "pa$$word"}`,
 					},
 				},
 			},
@@ -87,10 +137,7 @@ func Test_generateTests(t *testing.T) {
 				got = append(got, t)
 			}
 
-			as.Equal(t, tt.want, got)
-			// if !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("generateTests() = %v, want %v", got, tt.want)
-			// }
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
