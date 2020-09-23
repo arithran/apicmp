@@ -36,14 +36,11 @@ func newRetryPolicy(retry map[int]struct{}) retryablehttp.CheckRetry {
 	}
 }
 
-func httpTrace(req *http.Request, resp *http.Response) {
-	if req != nil {
-		reqStr, _ := httputil.DumpRequestOut(req, true)
-		log.Tracef("---TRACE REQUEST---\n%s\n--- END ---\n\n", reqStr)
-	}
-
-	if resp != nil {
-		respStr, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("---TRACE RESPONSE---\n%s\n--- END ---\n\n", respStr)
-	}
+func httpTraceReq(req *http.Request) {
+	reqStr, _ := httputil.DumpRequestOut(req, true)
+	log.Tracef("---TRACE REQUEST---\n%s\n--- END ---\n\n", reqStr)
+}
+func httpTraceResp(resp *http.Response) {
+	respStr, _ := httputil.DumpResponse(resp, true)
+	log.Tracef("---TRACE RESPONSE---\n%s\n--- END ---\n\n", respStr)
 }

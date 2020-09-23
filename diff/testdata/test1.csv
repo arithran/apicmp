@@ -1,2 +1,0 @@
-method,path,"X-Api-Key",body
-POST,"/v1/videolists/concat?dma=527&contextId=soccer%2Fall%2Fteams%2F109&contextType=SportsEntity&itemsPerPage=25&cacheSetting=location",727874d308135908a410a4fe9773e648,"{""items"":[{""@id"":""{apiBasePath}/videolists/5dc354f6897bd1001a2e70b7"",""@type"":""VideoList"",""id"":""5dc354f6897bd1001a2e70b7""}],""parentId"":""5dc992831bee56001ee75e9d""}"
