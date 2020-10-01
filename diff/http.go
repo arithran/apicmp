@@ -18,6 +18,7 @@ type httpClient interface {
 func newRetriableHTTPClient(retry map[int]struct{}) httpClient {
 	c := retryablehttp.NewClient()
 	c.Logger = nil
+	c.RetryMax = 1
 	c.CheckRetry = newRetryPolicy(retry)
 	return c
 }
@@ -29,9 +30,11 @@ func newRetryPolicy(retry map[int]struct{}) retryablehttp.CheckRetry {
 			return false, ctx.Err()
 		}
 
-		if _, ok := retry[resp.StatusCode]; ok {
-			log.Info("Retrying")
-			return true, nil
+		if resp != nil {
+			if _, ok := retry[resp.StatusCode]; ok {
+				log.Info("Retrying")
+				return true, nil
+			}
 		}
 
 		return false, nil

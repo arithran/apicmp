@@ -99,12 +99,14 @@ func (h csvHelper) Body(row []string) string {
 func (h csvHelper) Headers(row []string) map[string]string {
 	hs := map[string]string{}
 
+	// default headers
+	hs["Content-Type"] = "application/json"
+
 	for k, v := range h.headers {
 		if len(row) > v {
 			hs[k] = row[v]
 		}
 	}
-
 	return hs
 }
 
