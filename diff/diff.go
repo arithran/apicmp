@@ -77,10 +77,16 @@ func Cmp(ctx context.Context, c Config) error {
 		if len(r.Diffs) > 0 {
 			_ = tpl.ExecuteTemplate(os.Stdout, "curl", r.e)
 			sum.FailedRows = append(sum.FailedRows, r.e.Row)
+
+			fmt.Println("Diff:")
 			for _, v := range r.Diffs {
 				sum.Issues[v.Field] = append(sum.Issues[v.Field], r.e.Row)
 				fmt.Println(v.Field + ":")
-				fmt.Println(v.Delta)
+				if log.IsLevelEnabled(log.DebugLevel) {
+					fmt.Println(v.Delta)
+				} else {
+					fmt.Println("Error: Not Equal")
+				}
 			}
 			fmt.Printf("\n\n")
 		} else {

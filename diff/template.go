@@ -15,7 +15,6 @@ curl --location --request {{ .After.Method }} '{{ .After.Path }}' \{{range $k, $
 --header '{{$k}}: {{$v}}'{{end}} {{if ne (len .After.Body) 0}}\
 --data-raw '{{ .After.Body }}' {{end}}
 
-Result:
 `
 
 const summaryTemplate = `
