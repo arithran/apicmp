@@ -126,6 +126,7 @@ func compare(ctx context.Context, client httpClient, tests <-chan test, ignore m
 				if errors.Is(err, context.Canceled) {
 					log.Infof("row:%d was canceled", t.Row)
 				} else {
+					_ = tpl.ExecuteTemplate(os.Stdout, "curl", r.e)
 					log.Errorf("row:%d err:%v", t.Row, err)
 				}
 
