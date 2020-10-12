@@ -30,6 +30,7 @@ type Config struct {
 	AfterBasePath   string
 	FixtureFilePath string
 	Headers         []string
+	QueryStrings    []string
 	IgnoreFields    map[string]struct{}
 	Rows            map[int]struct{}
 	Retry           map[int]struct{}

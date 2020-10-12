@@ -46,6 +46,11 @@ func main() {
 						Aliases: []string{"H"},
 						Usage:   "'Cache-Control: no-cache' ",
 					},
+					&cli.StringSliceFlag{
+						Name:    "querystring",
+						Aliases: []string{"Q"},
+						Usage:   "'key: value' ",
+					},
 					&cli.StringFlag{
 						Name:    "ignore",
 						Aliases: []string{"I"},
@@ -106,6 +111,7 @@ func main() {
 						AfterBasePath:   c.String("after"),
 						FixtureFilePath: c.String("file"),
 						Headers:         c.StringSlice("header"),
+						QueryStrings:    c.StringSlice("querystring"),
 						IgnoreFields:    diff.Atoam(c.String("ignore")),
 						Rows:            diff.Atoim(c.String("rows")),
 						Retry:           diff.Atoim(c.String("retry")),

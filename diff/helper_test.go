@@ -74,3 +74,48 @@ func TestAtoim(t *testing.T) {
 		})
 	}
 }
+
+func Test_buildURL(t *testing.T) {
+	type args struct {
+		base string
+		path string
+		qs   []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "test 1",
+			args: args{
+				base: "http://localhost",
+				path: "/users/1",
+				qs: []string{
+					"bar: tom",
+					"baz: dick",
+				},
+			},
+			want: "http://localhost/users/1?bar=tom&baz=dick",
+		},
+		{
+			name: "test 2",
+			args: args{
+				base: "http://localhost",
+				path: "/users/1?foo=true",
+				qs: []string{
+					"bar: tom",
+					"baz: dick",
+				},
+			},
+			want: "http://localhost/users/1?bar=tom&baz=dick&foo=true",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := buildURL(tt.args.base, tt.args.path, tt.args.qs); got != tt.want {
+				t.Errorf("buildURL() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -2,6 +2,7 @@ package diff
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"unicode"
@@ -121,4 +122,30 @@ func setLoglevel(level string) error {
 
 	log.SetLevel(l)
 	return nil
+}
+
+func buildURL(base, path string, qs []string) string {
+	out := base + path
+
+	if len(qs) > 0 {
+		u, _ := url.Parse(out)
+		q, _ := url.ParseQuery(u.RawQuery)
+
+		for _, h := range qs {
+			parts := strings.Split(h, ":")
+			if len(parts) != headerParts {
+				log.Errorf("skipping invalid param --querystring %s", h)
+				continue
+			}
+
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			q.Add(k, v)
+		}
+
+		u.RawQuery = q.Encode()
+		out = u.String()
+	}
+
+	return out
 }
