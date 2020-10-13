@@ -184,13 +184,13 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 				Row: cursor,
 				Before: input{
 					Method:  h.Method(fields),
-					Path:    buildURL(c.BeforeBasePath, h.Path(fields), c.QueryStrings),
+					Path:    buildURL(c.BeforeBasePath, h.Path(fields), c.QueryStrings, c.IgnoreQueryStrings),
 					Headers: h.Headers(fields),
 					Body:    h.Body(fields),
 				},
 				After: input{
 					Method:  h.Method(fields),
-					Path:    buildURL(c.AfterBasePath, h.Path(fields), c.QueryStrings),
+					Path:    buildURL(c.AfterBasePath, h.Path(fields), c.QueryStrings, c.IgnoreQueryStrings),
 					Headers: h.Headers(fields),
 					Body:    h.Body(fields),
 				},

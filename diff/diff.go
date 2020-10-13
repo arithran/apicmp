@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"sync"
@@ -26,17 +27,18 @@ type Summary struct {
 }
 
 type Config struct {
-	BeforeBasePath  string
-	AfterBasePath   string
-	FixtureFilePath string
-	Headers         []string
-	QueryStrings    []string
-	IgnoreFields    map[string]struct{}
-	Rows            map[int]struct{}
-	Retry           map[int]struct{}
-	Match           string
-	LogLevel        string
-	Threads         int
+	BeforeBasePath     string
+	AfterBasePath      string
+	FixtureFilePath    string
+	Headers            []string
+	QueryStrings       []string
+	IgnoreQueryStrings *regexp.Regexp // regex to remove matched query strings
+	IgnoreFields       map[string]struct{}
+	Rows               map[int]struct{}
+	Retry              map[int]struct{}
+	Match              string
+	LogLevel           string
+	Threads            int
 }
 
 // Cmp will compare the before and after

@@ -3,6 +3,7 @@ package diff
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -124,12 +125,21 @@ func setLoglevel(level string) error {
 	return nil
 }
 
-func buildURL(base, path string, qs []string) string {
+func buildURL(base, path string, qs []string, ignoreQS *regexp.Regexp) string {
 	out := base + path
 
 	if len(qs) > 0 {
 		u, _ := url.Parse(out)
 		q, _ := url.ParseQuery(u.RawQuery)
+
+		// delete query strings that match the regex
+		if ignoreQS != nil {
+			for k := range q {
+				if ignoreQS.MatchString(k) {
+					q.Del(k)
+				}
+			}
+		}
 
 		for _, h := range qs {
 			parts := strings.Split(h, ":")

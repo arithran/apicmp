@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"syscall"
 
 	"github.com/arithran/apicmp/diff"
@@ -50,6 +51,11 @@ func main() {
 						Name:    "querystring",
 						Aliases: []string{"Q"},
 						Usage:   "'key: value' ",
+					},
+					&cli.StringFlag{
+						Name:    "ignoreQuerystring",
+						Aliases: []string{"IQ"},
+						Usage:   "regex to delete matched query strings",
 					},
 					&cli.StringFlag{
 						Name:    "ignore",
@@ -106,18 +112,24 @@ func main() {
 						cancel()
 					}()
 
+					var ignoreQuerystring *regexp.Regexp
+					if regex, err := regexp.Compile(c.String("ignoreQuerystring")); err == nil {
+						ignoreQuerystring = regex
+					}
+
 					return diff.Cmp(ctx, diff.Config{
-						BeforeBasePath:  c.String("before"),
-						AfterBasePath:   c.String("after"),
-						FixtureFilePath: c.String("file"),
-						Headers:         c.StringSlice("header"),
-						QueryStrings:    c.StringSlice("querystring"),
-						IgnoreFields:    diff.Atoam(c.String("ignore")),
-						Rows:            diff.Atoim(c.String("rows")),
-						Retry:           diff.Atoim(c.String("retry")),
-						Match:           c.String("match"),
-						LogLevel:        c.String("loglevel"),
-						Threads:         c.Int("threads"),
+						BeforeBasePath:     c.String("before"),
+						AfterBasePath:      c.String("after"),
+						FixtureFilePath:    c.String("file"),
+						Headers:            c.StringSlice("header"),
+						QueryStrings:       c.StringSlice("querystring"),
+						IgnoreQueryStrings: ignoreQuerystring,
+						IgnoreFields:       diff.Atoam(c.String("ignore")),
+						Rows:               diff.Atoim(c.String("rows")),
+						Retry:              diff.Atoim(c.String("retry")),
+						Match:              c.String("match"),
+						LogLevel:           c.String("loglevel"),
+						Threads:            c.Int("threads"),
 					})
 				},
 			},
