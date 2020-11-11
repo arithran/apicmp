@@ -36,7 +36,7 @@ OPTIONS:
 - The following columns have special meaning.
    - `method`: This will be the HTTP Method and will default to `GET` if ommited.
    - `path`: The value is required and is appended to the `--before` & `--after` options provided to the command. Double quotes maybe used if there are any spaces.
-   - `body`: If provided, the value is used for the requsest body
+   - `body`: If provided, the value is used for the request body
    - All other fields will forwarded as headers.
  
 Example File:
