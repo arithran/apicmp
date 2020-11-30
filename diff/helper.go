@@ -128,7 +128,7 @@ func setLoglevel(level string) error {
 func buildURL(base, path string, qs []string, ignoreQS *regexp.Regexp) string {
 	out := base + path
 
-	if len(qs) > 0 {
+	if len(qs) > 0 || ignoreQS != nil {
 		u, _ := url.Parse(out)
 		q, _ := url.ParseQuery(u.RawQuery)
 
