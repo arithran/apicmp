@@ -86,6 +86,10 @@ func main() {
 						Value: "debug",
 						Usage: "info",
 					},
+					&cli.StringFlag{
+						Name:  "postman",
+						Usage: "~/Downloads/collection.json",
+					},
 				},
 				Before: func(c *cli.Context) error {
 					if c.String("before") == "" {
@@ -130,6 +134,7 @@ func main() {
 						Match:              c.String("match"),
 						LogLevel:           c.String("loglevel"),
 						Threads:            c.Int("threads"),
+						PostmanFilePath:    c.String("postman"),
 					})
 				},
 			},
