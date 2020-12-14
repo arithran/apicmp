@@ -101,10 +101,12 @@ func Cmp(ctx context.Context, c Config) error {
 		}
 	}
 
-	postman := PostmanV2{}
-	err = postman.GenerateCollection(c.PostmanFilePath, collection)
-	if err != nil {
-		return fmt.Errorf("postman collection: %w", err)
+	if c.PostmanFilePath != "" {
+		postman := PostmanV2{}
+		err = postman.GenerateCollection(c.PostmanFilePath, collection)
+		if err != nil {
+			return fmt.Errorf("postman collection: %w", err)
+		}
 	}
 
 	sumTable := [][]string{}
