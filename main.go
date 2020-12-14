@@ -117,8 +117,10 @@ func main() {
 					}()
 
 					var ignoreQuerystring *regexp.Regexp
-					if regex, err := regexp.Compile(c.String("ignoreQuerystring")); err == nil {
-						ignoreQuerystring = regex
+					if c.IsSet("ignoreQuerystring") {
+						if regex, err := regexp.Compile(c.String("ignoreQuerystring")); err == nil {
+							ignoreQuerystring = regex
+						}
 					}
 
 					return diff.Cmp(ctx, diff.Config{
