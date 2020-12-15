@@ -35,6 +35,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.1",
+							"Content-Type":    "application/json",
 						},
 					},
 					After: input{
@@ -43,6 +44,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.1",
+							"Content-Type":    "application/json",
 						},
 					},
 				},
@@ -54,6 +56,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.2",
+							"Content-Type":    "application/json",
 						},
 					},
 					After: input{
@@ -62,6 +65,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.2",
+							"Content-Type":    "application/json",
 						},
 					},
 				},
@@ -86,6 +90,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.1",
+							"Content-Type":    "application/json",
 						},
 						Body: `{"email": "user1@example.com", "password": "pa$$word"}`,
 					},
@@ -95,6 +100,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.1",
+							"Content-Type":    "application/json",
 						},
 						Body: `{"email": "user1@example.com", "password": "pa$$word"}`,
 					},
@@ -107,6 +113,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.2",
+							"Content-Type":    "application/json",
 						},
 						Body: `{"email": "user2@example.com", "password": "pa$$word"}`,
 					},
@@ -116,6 +123,7 @@ func Test_generateTests(t *testing.T) {
 						Headers: map[string]string{
 							"X-Api-Key":       "abcd",
 							"X-Forwarded-For": "192.168.1.2",
+							"Content-Type":    "application/json",
 						},
 						Body: `{"email": "user2@example.com", "password": "pa$$word"}`,
 					},
