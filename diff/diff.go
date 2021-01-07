@@ -39,6 +39,7 @@ type Config struct {
 	Match              string
 	LogLevel           string
 	Threads            int
+	PostmanFilePath    string
 }
 
 // Cmp will compare the before and after
@@ -69,6 +70,8 @@ func Cmp(ctx context.Context, c Config) error {
 		cs[i] = compare(ctx, client, tChan, c.IgnoreFields, wantMatch)
 	}
 
+	collection := make([]test, 0)
+
 	// compute results
 	sum := Summary{
 		Issues: map[string][]int{},
@@ -78,6 +81,7 @@ func Cmp(ctx context.Context, c Config) error {
 		sum.Count++
 
 		if len(r.Diffs) > 0 {
+			collection = append(collection, r.e)
 			_ = tpl.ExecuteTemplate(os.Stdout, "curl", r.e)
 			sum.FailedRows = append(sum.FailedRows, r.e.Row)
 
@@ -94,6 +98,14 @@ func Cmp(ctx context.Context, c Config) error {
 			fmt.Printf("\n\n")
 		} else {
 			sum.Passed++
+		}
+	}
+
+	if c.PostmanFilePath != "" {
+		postman := PostmanV2{}
+		err = postman.GenerateCollection(c.PostmanFilePath, collection)
+		if err != nil {
+			return fmt.Errorf("postman collection: %w", err)
 		}
 	}
 
