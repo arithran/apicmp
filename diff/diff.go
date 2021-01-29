@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/arithran/jsondiff"
+	"github.com/itchyny/gojq"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 )
@@ -40,6 +41,7 @@ type Config struct {
 	LogLevel           string
 	Threads            int
 	PostmanFilePath    string
+	Jq                 string
 }
 
 // Cmp will compare the before and after
@@ -56,6 +58,15 @@ func Cmp(ctx context.Context, c Config) error {
 		return err
 	}
 
+	// parse query
+	var jq *gojq.Query
+	if c.Jq != "" {
+		jq, err = gojq.Parse(c.Jq)
+		if err != nil {
+			return err
+		}
+	}
+
 	// init assertion workers
 	client := newRetriableHTTPClient(c.Retry)
 	var wantMatch jsondiff.Difference
@@ -67,7 +78,7 @@ func Cmp(ctx context.Context, c Config) error {
 	}
 	cs := make([]<-chan result, c.Threads)
 	for i := 0; i < c.Threads; i++ {
-		cs[i] = compare(ctx, client, tChan, c.IgnoreFields, wantMatch)
+		cs[i] = compare(ctx, client, tChan, c.IgnoreFields, wantMatch, jq)
 	}
 
 	collection := make([]test, 0)
@@ -131,12 +142,13 @@ func Cmp(ctx context.Context, c Config) error {
 	return nil
 }
 
-func compare(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}, wantMatch jsondiff.Difference) <-chan result {
+func compare(ctx context.Context, client httpClient, tests <-chan test,
+	ignore map[string]struct{}, wantMatch jsondiff.Difference, jq *gojq.Query) <-chan result {
 	results := make(chan result)
 
 	go func() {
 		for t := range tests {
-			r, err := exec(ctx, client, t, ignore, wantMatch)
+			r, err := exec(ctx, client, t, ignore, wantMatch, jq)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					log.Infof("row:%d was canceled", t.Row)
