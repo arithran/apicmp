@@ -40,6 +40,7 @@ type Config struct {
 	LogLevel           string
 	Threads            int
 	PostmanFilePath    string
+	IgnoreRows         map[int]struct{}
 }
 
 // Cmp will compare the before and after

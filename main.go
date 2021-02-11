@@ -90,6 +90,11 @@ func main() {
 						Name:  "postman",
 						Usage: "~/Downloads/collection.json",
 					},
+					&cli.StringFlag{
+						Name:    "ignorerows",
+						Aliases: []string{"IR"},
+						Usage:   "1,7,12 (Ignore specific tests from file)",
+					},
 				},
 				Before: func(c *cli.Context) error {
 					if c.String("before") == "" {
@@ -103,6 +108,11 @@ func main() {
 					}
 					if _, ok := validMatches[c.String("match")]; !ok {
 						return errors.New("invalid --match flag")
+					}
+					hasRows := c.String("rows") != ""
+					hasIgnoreRows := c.String("ignorerows") != ""
+					if hasIgnoreRows && hasRows {
+						return errors.New("you can't use both ignore and rows in the same time")
 					}
 					return nil
 				},
@@ -137,6 +147,7 @@ func main() {
 						LogLevel:           c.String("loglevel"),
 						Threads:            c.Int("threads"),
 						PostmanFilePath:    c.String("postman"),
+						IgnoreRows:         diff.Atoim(c.String("ignorerows")),
 					})
 				},
 			},
