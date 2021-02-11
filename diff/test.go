@@ -150,6 +150,8 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 
 	totalFields := h.totalFields()
 
+	shouldIgnore := len(c.IgnoreRows) > 0
+
 	// generate tests
 	out := make(chan test)
 	go func() {
@@ -174,9 +176,15 @@ func generateTests(ctx context.Context, c Config) (<-chan test, error) {
 				continue
 			}
 
-			if len(c.Rows) > 0 {
-				if _, ok := c.Rows[cursor]; !ok {
+			if shouldIgnore {
+				if _, ok := c.IgnoreRows[cursor]; ok {
 					continue
+				}
+			} else {
+				if len(c.Rows) > 0 {
+					if _, ok := c.Rows[cursor]; !ok {
+						continue
+					}
 				}
 			}
 
