@@ -4,13 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"sort"
 
-	"github.com/arithran/jsondiff"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
-var opts jsondiff.Options
+type outputType uint8
+
+const (
+	bodyOutput outputType = 1 << iota
+	rawOutput
+)
 
 type (
 	result struct {
@@ -25,34 +30,27 @@ type (
 	}
 )
 
-func exec(ctx context.Context, c httpClient, t test, ignore map[string]struct{}, wantMatch jsondiff.Difference) (result, error) {
+func exec(ctx context.Context, c httpClient, t test, outCmp outputComparer) (result, error) {
 	var err error
 	res := result{
 		e: t,
 	}
 
-	res.Before, err = newOutput(ctx, c, t.Before)
+	res.Before, err = newOutput(ctx, c, t.Before, outCmp.outputType())
 	if err != nil {
 		return res, err
 	}
-	res.After, err = newOutput(ctx, c, t.After)
+	res.After, err = newOutput(ctx, c, t.After, outCmp.outputType())
 	if err != nil {
 		return res, err
 	}
 
 	// calculate diff only if status codes are equal
 	if res.Before.Code == res.After.Code {
-		for k, v := range res.Before.Body {
-			if _, ok := ignore[k]; ok {
-				continue
-			}
-
-			match, delta := jsondiff.Compare(res.After.Body[k], v, &opts)
-			if match > wantMatch {
-				res.Diffs = append(res.Diffs, diff{
-					Field: k,
-					Delta: cleanDiff(delta),
-				})
+		if res.Before.StatusCode > 199 && res.Before.StatusCode < 300 {
+			d, ok := outCmp.cmp(res.Before, res.After)
+			if !ok {
+				res.Diffs = append(res.Diffs, d)
 			}
 		}
 	} else {
@@ -69,11 +67,13 @@ func exec(ctx context.Context, c httpClient, t test, ignore map[string]struct{},
 }
 
 type output struct {
-	Code string
-	Body map[string]json.RawMessage
+	StatusCode int
+	Code       string
+	Body       map[string]json.RawMessage
+	Raw        []byte
 }
 
-func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
+func newOutput(ctx context.Context, c httpClient, i input, outType outputType) (output, error) {
 	o := output{}
 
 	// request
@@ -101,16 +101,20 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 
 	// decode
 	o.Code = resp.Status
-	err = json.NewDecoder(resp.Body).Decode(&o.Body)
+	o.StatusCode = resp.StatusCode
+	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return o, err
 	}
 	resp.Body.Close()
-
+	if outType&bodyOutput != 0 {
+		err = json.Unmarshal(data, &o.Body)
+		if err != nil {
+			return o, err
+		}
+	}
+	if outType&rawOutput != 0 {
+		o.Raw = data
+	}
 	return o, nil
-}
-
-func init() {
-	opts = jsondiff.DefaultConsoleOptions()
-	opts.PrintTypes = false
 }

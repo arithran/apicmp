@@ -40,6 +40,7 @@ type Config struct {
 	LogLevel           string
 	Threads            int
 	PostmanFilePath    string
+	PluginFilePath     string
 }
 
 // Cmp will compare the before and after
@@ -58,16 +59,27 @@ func Cmp(ctx context.Context, c Config) error {
 
 	// init assertion workers
 	client := newRetriableHTTPClient(c.Retry)
-	var wantMatch jsondiff.Difference
-	switch c.Match {
-	case "superset":
-		wantMatch = jsondiff.SupersetMatch
-	default:
-		wantMatch = jsondiff.FullMatch
+	var outCmp outputComparer
+	if c.PluginFilePath == "" {
+		var wantMatch jsondiff.Difference
+		switch c.Match {
+		case "superset":
+			wantMatch = jsondiff.SupersetMatch
+		default:
+			wantMatch = jsondiff.FullMatch
+		}
+		opts := jsondiff.DefaultConsoleOptions()
+		opts.PrintTypes = false
+		outCmp = newJSONDiffCmp(c.IgnoreFields, opts, wantMatch)
+	} else {
+		outCmp, err = newPluginCmp(c.PluginFilePath)
+		if err != nil {
+			return err
+		}
 	}
 	cs := make([]<-chan result, c.Threads)
 	for i := 0; i < c.Threads; i++ {
-		cs[i] = compare(ctx, client, tChan, c.IgnoreFields, wantMatch)
+		cs[i] = compare(ctx, client, tChan, outCmp)
 	}
 
 	collection := make([]test, 0)
@@ -131,12 +143,12 @@ func Cmp(ctx context.Context, c Config) error {
 	return nil
 }
 
-func compare(ctx context.Context, client httpClient, tests <-chan test, ignore map[string]struct{}, wantMatch jsondiff.Difference) <-chan result {
+func compare(ctx context.Context, client httpClient, tests <-chan test, outCmp outputComparer) <-chan result {
 	results := make(chan result)
 
 	go func() {
 		for t := range tests {
-			r, err := exec(ctx, client, t, ignore, wantMatch)
+			r, err := exec(ctx, client, t, outCmp)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					log.Infof("row:%d was canceled", t.Row)
