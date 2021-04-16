@@ -22,6 +22,7 @@ OPTIONS:
    --match value             exact|superset (default: "exact")
    --threads value           10 (default: "4")
    --loglevel value          info (default: "debug")
+   --jq value                jq expression executed in compared data
 ```
 
 ## CSV File 
