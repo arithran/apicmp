@@ -110,24 +110,9 @@ func newOutput(ctx context.Context, c httpClient, i input, jq *gojq.Query) (outp
 		if err != nil {
 			return o, err
 		}
-		iter := jq.Run(body)
-		qres := []interface{}{}
-		for {
-			v, ok := iter.Next()
-			if !ok {
-				break
-			}
-			if err, ok := v.(error); ok {
-				return o, err
-			}
-			qres = append(qres, v)
-		}
-		qresJson, err := json.Marshal(qres)
+		o.Body, err = applyJqQueryToBody(jq, body)
 		if err != nil {
 			return o, err
-		}
-		o.Body = map[string]json.RawMessage{
-			"jq": qresJson,
 		}
 	} else {
 		err = json.NewDecoder(resp.Body).Decode(&o.Body)
