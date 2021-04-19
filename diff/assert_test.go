@@ -22,7 +22,7 @@ func Test_newOutput(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newOutput(tt.args.ctx, tt.args.c, tt.args.i)
+			got, err := newOutput(tt.args.ctx, tt.args.c, tt.args.i, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newOutput() error = %v, wantErr %v", err, tt.wantErr)
 				return

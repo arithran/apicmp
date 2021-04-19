@@ -8,6 +8,7 @@ import (
 
 	"github.com/arithran/jsondiff"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/itchyny/gojq"
 )
 
 var opts jsondiff.Options
@@ -25,17 +26,18 @@ type (
 	}
 )
 
-func exec(ctx context.Context, c httpClient, t test, ignore map[string]struct{}, wantMatch jsondiff.Difference) (result, error) {
+func exec(ctx context.Context, c httpClient, t test,
+	ignore map[string]struct{}, wantMatch jsondiff.Difference, jq *gojq.Query) (result, error) {
 	var err error
 	res := result{
 		e: t,
 	}
 
-	res.Before, err = newOutput(ctx, c, t.Before)
+	res.Before, err = newOutput(ctx, c, t.Before, jq)
 	if err != nil {
 		return res, err
 	}
-	res.After, err = newOutput(ctx, c, t.After)
+	res.After, err = newOutput(ctx, c, t.After, jq)
 	if err != nil {
 		return res, err
 	}
@@ -73,7 +75,7 @@ type output struct {
 	Body map[string]json.RawMessage
 }
 
-func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
+func newOutput(ctx context.Context, c httpClient, i input, jq *gojq.Query) (output, error) {
 	o := output{}
 
 	// request
@@ -101,11 +103,23 @@ func newOutput(ctx context.Context, c httpClient, i input) (output, error) {
 
 	// decode
 	o.Code = resp.Status
-	err = json.NewDecoder(resp.Body).Decode(&o.Body)
-	if err != nil {
-		return o, err
+	defer resp.Body.Close()
+	if jq != nil {
+		var body interface{}
+		err = json.NewDecoder(resp.Body).Decode(&body)
+		if err != nil {
+			return o, err
+		}
+		o.Body, err = applyJqQueryToBody(jq, body)
+		if err != nil {
+			return o, err
+		}
+	} else {
+		err = json.NewDecoder(resp.Body).Decode(&o.Body)
+		if err != nil {
+			return o, err
+		}
 	}
-	resp.Body.Close()
 
 	return o, nil
 }
